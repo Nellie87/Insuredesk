@@ -1,8 +1,18 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useClients } from '../hooks/useClients'
-import { formatKSh, hasOverduePayment, getNextDueInstallment, getVehicleSchedules } from '../utils/calculator'
-import { differenceInDays, parseISO, isWithinInterval, addDays } from 'date-fns'
+import {
+  formatKSh,
+  hasOverduePayment,
+  getNextDueInstallment,
+  getVehicleSchedules,
+} from '../utils/calculator'
+import {
+  differenceInDays,
+  parseISO,
+  isWithinInterval,
+  addDays,
+} from 'date-fns'
 import KpiCard from '../components/ui/KpiCard'
 import LottieLoader from '../components/ui/LottieLoader'
 import StatusBadge from '../components/ui/StatusBadge'
@@ -25,7 +35,9 @@ export default function DashboardPage() {
       for (const vehicle of client.vehicles ?? []) {
         totalPremium += Number(vehicle.premium ?? 0)
 
-        const overdueSchedule = getVehicleSchedules(vehicle).find(hasOverduePayment)
+        const overdueSchedule = getVehicleSchedules(vehicle).find(
+          hasOverduePayment,
+        )
         if (overdueSchedule) {
           overdueCount++
           const next = getNextDueInstallment(overdueSchedule)
@@ -51,21 +63,32 @@ export default function DashboardPage() {
       overdueAmount,
       expiringCount,
       overdueClients: overdueClients.slice(0, 5),
-      expiringVehicles: expiringVehicles.slice(0, 5).sort((a, b) => a.daysLeft - b.daysLeft),
+      expiringVehicles: expiringVehicles
+        .slice(0, 5)
+        .sort((a, b) => a.daysLeft - b.daysLeft),
     }
   }, [clients])
 
   if (loading) return <LottieLoader label="Loading workspace..." />
 
   return (
-    <div className="p-4 space-y-5">
-      <div className="flex gap-3 overflow-x-auto hide-scrollbar -mx-1 px-1 pb-1">
+    <div className="space-y-4 p-4 pb-8">
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+          Overview
+        </p>
+        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+          Dashboard
+        </h1>
+      </div>
+
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 hide-scrollbar">
         <KpiCard
           label="Total premium"
           value={formatKSh(stats.totalPremium)}
           accent="navy"
           badge={
-            <span className="text-[10px] font-semibold text-success-700 bg-success-50 px-2 py-0.5 rounded-full">
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
               ↑ {stats.totalClients}
             </span>
           }
@@ -83,43 +106,54 @@ export default function DashboardPage() {
       </div>
 
       <div>
-        <div className="text-[10px] font-semibold tracking-wider text-gray-400 uppercase mb-2">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
           Quick actions
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <Link to="/clients/add" className="bg-primary-800 text-white rounded-2xl p-3 text-sm font-semibold text-center shadow-card">
+        </p>
+        <div className="grid grid-cols-2 gap-2.5">
+          <Link
+            to="/clients/add"
+            className="rounded-2xl bg-primary-800 p-3 text-center text-sm font-bold text-white shadow-card"
+          >
             + Add client
           </Link>
-          <Link to="/calculator" className="bg-white border border-gray-200 text-gray-700 rounded-2xl p-3 text-sm font-medium text-center shadow-card">
+          <Link
+            to="/calculator"
+            className="rounded-2xl border border-slate-200 bg-white p-3 text-center text-sm font-semibold text-slate-700 shadow-card"
+          >
             Calculator
           </Link>
-          <Link to="/prospects" className="bg-white border border-gray-200 text-gray-700 rounded-2xl p-3 text-sm font-medium text-center shadow-card">
+          <Link
+            to="/prospects"
+            className="col-span-2 rounded-2xl border border-slate-200 bg-white p-3 text-center text-sm font-semibold text-slate-700 shadow-card"
+          >
             Prospects
           </Link>
         </div>
       </div>
 
       {stats.overdueClients.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xs font-bold tracking-wider text-gray-500 uppercase">Overdue payments</h2>
-          </div>
-          <div className="space-y-3">
+        <section className="space-y-3">
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            Overdue payments
+          </h2>
+          <div className="space-y-2.5">
             {stats.overdueClients.map(({ client, vehicle, installment }) => (
               <Link
                 key={vehicle.id}
                 to={`/clients/${client.id}`}
-                className="block bg-white border border-gray-200 rounded-2xl p-4 shadow-card"
+                className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-card"
               >
-                <div className="flex justify-between items-start gap-3">
-                  <div>
-                    <div className="text-sm font-bold text-gray-900">{client.name}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="break-words text-sm font-bold text-slate-900">
+                      {client.name}
+                    </div>
+                    <div className="mt-0.5 break-words text-xs text-slate-500">
                       {vehicle.make} {vehicle.model} · {vehicle.registration}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-bold text-danger-700">
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-black text-danger-700">
                       {installment ? formatKSh(installment.amount) : '—'}
                     </div>
                     <div className="mt-1 flex justify-end">
@@ -130,30 +164,38 @@ export default function DashboardPage() {
               </Link>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {stats.expiringVehicles.length > 0 && (
-        <div>
-          <h2 className="text-xs font-bold tracking-wider text-gray-500 uppercase mb-2">Policies expiring soon</h2>
-          <div className="space-y-3">
+        <section className="space-y-3">
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            Policies expiring soon
+          </h2>
+          <div className="space-y-2.5">
             {stats.expiringVehicles.map(({ client, vehicle, daysLeft }) => (
               <Link
                 key={vehicle.id}
                 to={`/clients/${client.id}`}
-                className="block bg-white border border-gray-200 rounded-2xl p-4 shadow-card"
+                className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-card"
               >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="text-sm font-bold text-gray-900">{client.name}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{vehicle.registration}</div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="break-words text-sm font-bold text-slate-900">
+                      {client.name}
+                    </div>
+                    <div className="mt-0.5 text-xs text-slate-500">
+                      {vehicle.registration}
+                    </div>
                   </div>
-                  <StatusBadge status={daysLeft <= 7 ? 'overdue' : 'expiring_soon'} />
+                  <StatusBadge
+                    status={daysLeft <= 7 ? 'overdue' : 'expiring_soon'}
+                  />
                 </div>
               </Link>
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   )

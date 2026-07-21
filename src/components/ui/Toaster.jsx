@@ -1,0 +1,34 @@
+import { useToastStore } from '../../store/toastStore'
+
+const STYLES = {
+  success: 'bg-primary-900 text-white',
+  error: 'bg-red-700 text-white',
+  info: 'bg-slate-800 text-white',
+}
+
+export default function Toaster() {
+  const toasts = useToastStore(s => s.toasts)
+  const dismissToast = useToastStore(s => s.dismissToast)
+
+  if (toasts.length === 0) return null
+
+  return (
+    <div
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-full max-w-sm px-4 space-y-2 pointer-events-none"
+      aria-live="polite"
+    >
+      {toasts.map(item => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => dismissToast(item.id)}
+          className={`pointer-events-auto w-full rounded-2xl px-4 py-3 text-left text-sm font-medium shadow-lg ${
+            STYLES[item.type] ?? STYLES.info
+          }`}
+        >
+          {item.message}
+        </button>
+      ))}
+    </div>
+  )
+}

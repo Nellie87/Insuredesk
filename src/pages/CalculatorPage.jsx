@@ -1,6 +1,14 @@
 import { useState } from 'react'
 import { calculatePolicy, formatKSh } from '../utils/calculator'
-import { format, addMonths } from 'date-fns'
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput'
+import { toast } from '../store/toastStore'
+import { format } from 'date-fns'
+
+const INPUT =
+  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
+
+const LABEL =
+  'text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400'
 
 const DEFAULT_INPUT = {
   total_premium: '',
@@ -17,10 +25,14 @@ export default function CalculatorPage() {
   const set = (key, value) => setInput(prev => ({ ...prev, [key]: value }))
 
   const handleCalculate = () => {
-    const premium = parseFloat(input.total_premium)
-    if (!premium || premium <= 0) return alert('Enter a valid total premium.')
+    const premium = parseFloat(parseNumberInput(input.total_premium))
+    if (!premium || premium <= 0) {
+      toast('Enter a valid total premium.', 'error')
+      return
+    }
     const res = calculatePolicy({ ...input, total_premium: premium })
     setResult(res)
+    toast('Calculation ready.')
   }
 
   const handleReset = () => {
@@ -29,49 +41,65 @@ export default function CalculatorPage() {
   }
 
   return (
-    <div className="p-4 space-y-5">
-      <h1 className="text-lg font-semibold text-gray-900">Policy calculator</h1>
+    <div className="space-y-4 p-4 pb-8">
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+          Tools
+        </p>
+        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+          Policy calculator
+        </h1>
+      </div>
 
-      {/* Inputs */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-4">
-
+      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total premium (KSh)</label>
+          <label className={LABEL}>
+            Total premium (KSh){' '}
+            <span className="normal-case text-red-600">*</span>
+          </label>
           <input
-            type="number"
-            placeholder="e.g. 36000"
+            type="text"
+            inputMode="decimal"
+            placeholder="e.g. 36,000"
             value={input.total_premium}
-            onChange={e => set('total_premium', e.target.value)}
-            className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            onChange={e =>
+              set('total_premium', formatNumberInput(e.target.value))
+            }
+            className={INPUT}
           />
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          <label className={LABEL}>
             Down payment — {input.down_payment_percent}%
           </label>
           <input
-            type="range" min="10" max="100" step="5"
+            type="range"
+            min="10"
+            max="100"
+            step="5"
             value={input.down_payment_percent}
             onChange={e => set('down_payment_percent', Number(e.target.value))}
-            className="mt-1 w-full accent-primary-700"
+            className="mt-2 w-full accent-primary-700"
           />
-          <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-            <span>10%</span><span>100%</span>
+          <div className="mt-0.5 flex justify-between text-xs text-slate-400">
+            <span>10%</span>
+            <span>100%</span>
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Installment period</label>
-          <div className="mt-1 grid grid-cols-5 gap-1">
+          <label className={LABEL}>Installment period</label>
+          <div className="mt-1.5 grid grid-cols-5 gap-1.5">
             {[1, 2, 3, 6, 12].map(m => (
               <button
                 key={m}
+                type="button"
                 onClick={() => set('installment_months', m)}
-                className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
+                className={`rounded-xl border py-2 text-sm font-semibold transition-colors ${
                   input.installment_months === m
-                    ? 'bg-primary-700 text-white border-primary-700'
-                    : 'bg-white text-gray-600 border-gray-300'
+                    ? 'border-primary-800 bg-primary-800 text-white'
+                    : 'border-slate-200 bg-white text-slate-600'
                 }`}
               >
                 {m}mo
@@ -81,73 +109,103 @@ export default function CalculatorPage() {
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">First installment date</label>
+          <label className={LABEL}>First installment date</label>
           <input
             type="date"
             value={input.first_payment_date}
             onChange={e => set('first_payment_date', e.target.value)}
-            className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className={INPUT}
           />
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          <label className={LABEL}>
             Commission rate — {input.commission_rate}%
           </label>
           <input
-            type="range" min="0" max="30" step="0.5"
+            type="range"
+            min="0"
+            max="30"
+            step="0.5"
             value={input.commission_rate}
             onChange={e => set('commission_rate', Number(e.target.value))}
-            className="mt-1 w-full accent-primary-700"
+            className="mt-2 w-full accent-primary-700"
           />
         </div>
 
         <button
+          type="button"
           onClick={handleCalculate}
-          className="w-full bg-primary-700 text-white rounded-xl py-3 font-semibold text-sm"
+          className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white"
         >
           Calculate
         </button>
       </div>
 
-      {/* Results */}
       {result && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-primary-50 rounded-xl p-3">
-              <div className="text-xs text-primary-600 font-medium">Down payment</div>
-              <div className="text-lg font-bold text-primary-900">{formatKSh(result.down_payment)}</div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="rounded-2xl border border-blue-100 bg-white p-3.5 shadow-card">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                Down payment
+              </p>
+              <p className="mt-2 break-words text-base font-black text-blue-800">
+                {formatKSh(result.down_payment)}
+              </p>
             </div>
-            <div className="bg-gray-50 rounded-xl p-3">
-              <div className="text-xs text-gray-500 font-medium">Balance</div>
-              <div className="text-lg font-bold text-gray-900">{formatKSh(result.remaining_balance)}</div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                Balance
+              </p>
+              <p className="mt-2 break-words text-base font-black text-slate-950">
+                {formatKSh(result.remaining_balance)}
+              </p>
             </div>
-            <div className="bg-green-50 rounded-xl p-3">
-              <div className="text-xs text-green-600 font-medium">Monthly installment</div>
-              <div className="text-lg font-bold text-green-800">{formatKSh(result.monthly_installment)}</div>
+            <div className="rounded-2xl border border-emerald-100 bg-white p-3.5 shadow-card">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                Monthly installment
+              </p>
+              <p className="mt-2 break-words text-base font-black text-emerald-700">
+                {formatKSh(result.monthly_installment)}
+              </p>
             </div>
-            <div className="bg-amber-50 rounded-xl p-3">
-              <div className="text-xs text-amber-600 font-medium">Your commission</div>
-              <div className="text-lg font-bold text-amber-800">{formatKSh(result.commission)}</div>
+            <div className="rounded-2xl border border-amber-100 bg-white p-3.5 shadow-card">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                Your commission
+              </p>
+              <p className="mt-2 break-words text-base font-black text-amber-700">
+                {formatKSh(result.commission)}
+              </p>
             </div>
           </div>
 
-          {/* Installment schedule */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Installment schedule</h2>
-            <div className="space-y-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+            <h2 className="text-sm font-bold text-slate-900">
+              Installment schedule
+            </h2>
+            <div className="mt-3 space-y-0">
               {result.installment_schedule.map((inst, i) => (
-                <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                  <div className="text-sm text-gray-600">
-                    Payment {i + 1} — {format(new Date(inst.due_date), 'dd MMM yyyy')}
+                <div
+                  key={i}
+                  className="flex items-center justify-between gap-3 border-b border-slate-100 py-2.5 last:border-0"
+                >
+                  <div className="text-sm text-slate-600">
+                    Payment {i + 1} —{' '}
+                    {format(new Date(inst.due_date), 'dd MMM yyyy')}
                   </div>
-                  <div className="text-sm font-semibold text-gray-900">{formatKSh(inst.amount)}</div>
+                  <div className="shrink-0 text-sm font-bold text-slate-900">
+                    {formatKSh(inst.amount)}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <button onClick={handleReset} className="w-full text-gray-500 text-sm py-2">
+          <button
+            type="button"
+            onClick={handleReset}
+            className="w-full py-2 text-sm font-semibold text-slate-500"
+          >
             Reset calculator
           </button>
         </div>

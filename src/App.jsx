@@ -8,6 +8,7 @@ import DashboardPage   from './pages/DashboardPage'
 import ClientsPage     from './pages/ClientsPage'
 import ClientDetailPage from './pages/ClientDetailPage'
 import AddClientPage   from './pages/AddClientPage'
+import ImportClientsPage from './pages/ImportClientsPage'
 import CalculatorPage  from './pages/CalculatorPage'
 import PaymentsPage    from './pages/PaymentsPage'
 import RemindersPage   from './pages/RemindersPage'
@@ -17,6 +18,7 @@ import ProspectsPage from './pages/ProspectsPage'
 
 // Layout
 import AppLayout from './components/layout/AppLayout'
+import Toaster from './components/ui/Toaster'
 
 function ProtectedRoute({ children }) {
   const { session, authLoading } = useAppStore()
@@ -45,6 +47,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <Toaster />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
 
@@ -61,6 +64,7 @@ export default function App() {
           <Route path="prospects"           element={<ProspectsPage />} />
           <Route path="clients"             element={<ClientsPage />} />
           <Route path="clients/add"         element={<AddClientPage />} />
+          <Route path="clients/import"      element={<ImportClientsPage />} />
           <Route path="clients/:clientId"   element={<ClientDetailPage />} />
           <Route path="calculator"          element={<CalculatorPage />} />
           <Route path="payments"            element={<PaymentsPage />} />

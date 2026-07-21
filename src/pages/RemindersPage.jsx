@@ -3,8 +3,13 @@ import { format, parseISO, startOfMonth, isSameMonth } from 'date-fns'
 import { useReminders } from '../hooks/useReminders'
 import { useAppStore } from '../store/appStore'
 import { buildReminderMessage, whatsappUrl } from '../utils/reminders'
-import { downloadIcsFile, GOOGLE_CALENDAR_IMPORT_URL } from '../utils/calendar'
-import MonthCalendar, { CalendarLegend } from '../components/calendar/MonthCalendar'
+import {
+  downloadIcsFile,
+  GOOGLE_CALENDAR_IMPORT_URL,
+} from '../utils/calendar'
+import MonthCalendar, {
+  CalendarLegend,
+} from '../components/calendar/MonthCalendar'
 import CalendarEventCard from '../components/calendar/CalendarEventCard'
 import LottieLoader from '../components/ui/LottieLoader'
 
@@ -49,12 +54,14 @@ function getWhatsAppLink(event, agent) {
 
 export default function RemindersPage() {
   const { agent } = useAppStore()
-  const { groupedByDate, calendarEvents, loading } = useReminders()
+  const { calendarEvents, loading } = useReminders()
 
   const [view, setView] = useState('month')
   const [filter, setFilter] = useState('all')
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [selectedDate, setSelectedDate] = useState(
+    format(new Date(), 'yyyy-MM-dd'),
+  )
 
   const filteredEvents = useMemo(() => {
     if (filter === 'all') return calendarEvents
@@ -104,18 +111,23 @@ export default function RemindersPage() {
   }
 
   return (
-    <div className="p-4 space-y-4 pb-8">
+    <div className="space-y-4 p-4 pb-8">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Calendar</h1>
-          <p className="text-sm text-gray-500">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+            Schedule
+          </p>
+          <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+            Calendar
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
             Payments, renewals, and follow-ups at a glance.
           </p>
         </div>
         <button
           type="button"
           onClick={handleToday}
-          className="text-xs font-semibold text-primary-700 bg-primary-50 px-3 py-1.5 rounded-lg shrink-0"
+          className="shrink-0 rounded-xl border border-primary-100 bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary-700"
         >
           Today
         </button>
@@ -129,10 +141,10 @@ export default function RemindersPage() {
             key={v}
             type="button"
             onClick={() => setView(v)}
-            className={`flex-1 py-2 text-xs font-semibold rounded-xl border ${
+            className={`flex-1 rounded-xl border py-2 text-xs font-bold ${
               view === v
-                ? 'bg-primary-800 text-white border-primary-800'
-                : 'bg-white text-gray-600 border-gray-200'
+                ? 'border-primary-800 bg-primary-800 text-white'
+                : 'border-slate-200 bg-white text-slate-600'
             }`}
           >
             {v === 'month' ? 'Month' : 'Agenda'}
@@ -140,16 +152,16 @@ export default function RemindersPage() {
         ))}
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 hide-scrollbar">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 hide-scrollbar">
         {FILTERS.map(f => (
           <button
             key={f.value}
             type="button"
             onClick={() => setFilter(f.value)}
-            className={`whitespace-nowrap text-xs px-3 py-1.5 rounded-full font-medium border ${
+            className={`whitespace-nowrap rounded-full border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${
               filter === f.value
-                ? 'bg-primary-800 text-white border-primary-800'
-                : 'bg-white text-gray-600 border-gray-300'
+                ? 'border-primary-800 bg-primary-800 text-white'
+                : 'border-slate-200 bg-white text-slate-500'
             }`}
           >
             {f.label}
@@ -157,16 +169,17 @@ export default function RemindersPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-3 space-y-2">
-        <div className="text-xs font-semibold text-gray-700">Google Calendar</div>
-        <p className="text-xs text-gray-500">
-          Export all events as a file and import into Google Calendar, or add individual events with the button on each item.
+      <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card">
+        <div className="text-sm font-bold text-slate-900">Google Calendar</div>
+        <p className="text-xs text-slate-500">
+          Export all events as a file and import into Google Calendar, or add
+          individual events with the button on each item.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => downloadIcsFile(filteredEvents)}
-            className="text-xs font-medium text-primary-800 bg-primary-50 px-3 py-2 rounded-lg"
+            className="rounded-xl border border-primary-100 bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-800"
           >
             Download .ics file
           </button>
@@ -174,7 +187,7 @@ export default function RemindersPage() {
             href={GOOGLE_CALENDAR_IMPORT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs font-medium text-gray-700 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
           >
             Open Google import
           </a>
@@ -191,12 +204,12 @@ export default function RemindersPage() {
             onSelectDate={handleSelectDate}
           />
 
-          <section className="space-y-2">
-            <h2 className="text-xs font-bold tracking-wider text-gray-500 uppercase">
+          <section className="space-y-2.5">
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
               {format(parseISO(selectedDate), 'EEEE, d MMMM yyyy')}
             </h2>
             {selectedDayEvents.length === 0 ? (
-              <div className="text-sm text-gray-400 bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-center text-sm text-slate-400">
                 No events on this day.
               </div>
             ) : (
@@ -211,17 +224,17 @@ export default function RemindersPage() {
           </section>
         </>
       ) : filteredGroups.length === 0 ? (
-        <div className="text-center text-gray-400 py-12 bg-white rounded-2xl border border-gray-200">
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-400">
           Nothing scheduled for this filter.
         </div>
       ) : (
         <div className="space-y-5">
           {filteredGroups.map(group => (
             <section key={group.date}>
-              <h2 className="text-xs font-bold tracking-wider text-gray-500 uppercase mb-2">
+              <h2 className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                 {group.label}
               </h2>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {group.items.map(event => (
                   <CalendarEventCard
                     key={event.id}

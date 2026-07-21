@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store/appStore'
+import { toast } from '../store/toastStore'
 import { signOut, updateAgentProfile } from '../lib/supabase'
 import { format } from 'date-fns'
 
 const INPUT =
-  'mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
+
+const LABEL =
+  'text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400'
 
 const QUICK_LINKS = [
   { to: '/calculator', label: 'Premium calculator' },
@@ -15,7 +19,15 @@ const QUICK_LINKS = [
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { agent, session, isOnline, isSyncing, lastSyncAt, setAgent, triggerSync } = useAppStore()
+  const {
+    agent,
+    session,
+    isOnline,
+    isSyncing,
+    lastSyncAt,
+    setAgent,
+    triggerSync,
+  } = useAppStore()
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -42,8 +54,10 @@ export default function SettingsPage() {
       const updated = await updateAgentProfile(agent.id, { name, phone })
       setAgent(updated)
       setMessage('Profile updated.')
+      toast('Profile updated.')
     } catch (err) {
       setError(err.message)
+      toast(err.message || 'Could not update profile.', 'error')
     } finally {
       setSaving(false)
     }
@@ -55,8 +69,10 @@ export default function SettingsPage() {
     try {
       await triggerSync()
       setMessage('Sync complete.')
+      toast('Sync complete.')
     } catch (err) {
       setError(err.message)
+      toast(err.message || 'Sync failed.', 'error')
     }
   }
 
@@ -65,33 +81,44 @@ export default function SettingsPage() {
     navigate('/login', { replace: true })
   }
 
-  const rates = Array.isArray(agent?.commission_rates) ? agent.commission_rates : []
+  const rates = Array.isArray(agent?.commission_rates)
+    ? agent.commission_rates
+    : []
 
   return (
-    <div className="p-4 space-y-5 pb-8">
+    <div className="space-y-4 p-4 pb-8">
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">Settings</h1>
-        <p className="text-sm text-gray-500">Your agent profile and app preferences.</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+          Account
+        </p>
+        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+          Settings
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Your agent profile and app preferences.
+        </p>
       </div>
 
       {message && (
-        <div className="bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg px-3 py-2">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           {message}
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <section className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-800">Agent profile</h2>
+      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+        <h2 className="text-sm font-bold text-slate-900">Agent profile</h2>
 
         <form onSubmit={handleSave} className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-gray-500">Full name</label>
+            <label className={LABEL}>
+              Full name <span className="normal-case text-red-600">*</span>
+            </label>
             <input
               required
               value={name}
@@ -101,7 +128,9 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-500">Phone</label>
+            <label className={LABEL}>
+              Phone <span className="normal-case text-red-600">*</span>
+            </label>
             <input
               required
               type="tel"
@@ -112,68 +141,74 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-500">Email</label>
+            <label className={LABEL}>Email</label>
             <input
               readOnly
               value={session?.user?.email ?? agent?.email ?? ''}
-              className={`${INPUT} bg-gray-50 text-gray-500`}
+              className={`${INPUT} bg-slate-50 text-slate-500`}
             />
           </div>
 
           <button
             type="submit"
             disabled={saving || !agent}
-            className="w-full bg-primary-800 text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-50"
+            className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save profile'}
           </button>
         </form>
       </section>
 
-      <section className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-800">Commission rates</h2>
+      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+        <h2 className="text-sm font-bold text-slate-900">Commission rates</h2>
         {rates.length === 0 ? (
-          <p className="text-sm text-gray-400">No commission rates configured yet.</p>
+          <p className="text-sm text-slate-400">
+            No commission rates configured yet.
+          </p>
         ) : (
           <div className="space-y-2">
             {rates.map((rate, i) => (
               <div
                 key={i}
-                className="flex justify-between text-sm bg-gray-50 rounded-lg px-3 py-2"
+                className="flex justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
               >
-                <span className="text-gray-700">{rate.insurer}</span>
-                <span className="font-semibold text-gray-900">{rate.rate}%</span>
+                <span className="text-slate-700">{rate.insurer}</span>
+                <span className="font-bold text-slate-900">{rate.rate}%</span>
               </div>
             ))}
           </div>
         )}
       </section>
 
-      <section className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-800">Data & sync</h2>
-        <div className="text-xs text-gray-500 space-y-1">
+      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+        <h2 className="text-sm font-bold text-slate-900">Data & sync</h2>
+        <div className="space-y-1 text-xs text-slate-500">
           <p>Status: {isOnline ? 'Online' : 'Offline'}</p>
           {lastSyncAt && (
-            <p>Last sync: {format(new Date(lastSyncAt), 'd MMM yyyy, HH:mm')}</p>
+            <p>
+              Last sync: {format(new Date(lastSyncAt), 'd MMM yyyy, HH:mm')}
+            </p>
           )}
         </div>
         <button
           type="button"
           onClick={handleSync}
           disabled={isSyncing || !isOnline}
-          className="w-full border border-primary-200 text-primary-800 rounded-xl py-2.5 font-semibold text-sm disabled:opacity-50"
+          className="w-full rounded-xl border border-primary-200 py-2.5 text-sm font-bold text-primary-800 disabled:opacity-50"
         >
           {isSyncing ? 'Syncing...' : 'Sync now'}
         </button>
       </section>
 
-      <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <h2 className="text-sm font-semibold text-gray-800 px-4 pt-4 pb-2">Quick links</h2>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+        <h2 className="px-4 pb-2 pt-4 text-sm font-bold text-slate-900">
+          Quick links
+        </h2>
         {QUICK_LINKS.map(link => (
           <Link
             key={link.to}
             to={link.to}
-            className="block px-4 py-3 text-sm text-gray-700 border-t border-gray-100 active:bg-gray-50"
+            className="block border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 active:bg-slate-50"
           >
             {link.label}
           </Link>
@@ -183,7 +218,7 @@ export default function SettingsPage() {
       <button
         type="button"
         onClick={handleSignOut}
-        className="w-full bg-white border border-danger-200 text-danger-700 rounded-xl py-3 font-semibold text-sm"
+        className="w-full rounded-xl border border-danger-200 bg-white py-3 text-sm font-bold text-danger-700"
       >
         Sign out
       </button>

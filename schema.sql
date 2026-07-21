@@ -25,6 +25,7 @@ create table clients (
   id_number   text,
   email       text,
   address     text,
+  notes       text, -- agent Comment / free-text remarks
   status      text not null default 'active'
                 check (status in ('active','overdue','expiring_soon','fully_paid','lapsed')),
   created_at  timestamptz default now(),

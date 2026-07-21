@@ -1,9 +1,17 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useClients } from '../hooks/useClients'
+import { buildPaymentScheduleFromPlan } from '../utils/calculator'
+import { formatNumberInput, parseNumberInput, toNumberOrNull } from '../utils/numberInput'
+import { toast } from '../store/toastStore'
+import { INSURER_OPTIONS } from '../constants/insurers'
+import { CAR_MAKE_OPTIONS, getCarModelOptions } from '../constants/carMakes'
 
 const INPUT =
-  'w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
+
+const LABEL =
+  'text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400'
 
 const POLICY_TYPES = [
   { value: 'comprehensive', label: 'Comprehensive' },
@@ -25,26 +33,55 @@ function defaultExpiryDate(startDate) {
 
 const today = new Date().toISOString().slice(0, 10)
 
+const EMPTY_PLAN = {
+  renewal_1: '',
+  renewal_2: '',
+  renewal_3: '',
+  renewal_4: '',
+  payment_1: '',
+  payment_2: '',
+  payment_3: '',
+  payment_4: '',
+  balance: '',
+}
+
 const INITIAL_FORM = {
   name: '',
   phone: '',
   id_number: '',
   email: '',
   address: '',
+  notes: '',
   registration: '',
   make: '',
+  make_other: '',
   model: '',
+  model_other: '',
   year: '',
   engine_capacity: '',
   vehicle_value: '',
   use_type: 'private',
   insurer: '',
+  insurer_other: '',
   policy_number: '',
   policy_type: 'comprehensive',
   start_date: today,
   expiry_date: defaultExpiryDate(today),
   sum_insured: '',
   premium: '',
+  ...EMPTY_PLAN,
+}
+
+function Field({ label, required, children }) {
+  return (
+    <div>
+      <label className={LABEL}>
+        {label}
+        {required && <span className="text-red-600 ml-0.5">*</span>}
+      </label>
+      <div className="mt-1">{children}</div>
+    </div>
+  )
 }
 
 export default function AddClientPage() {
@@ -61,34 +98,69 @@ export default function AddClientPage() {
       if (key === 'start_date' && value) {
         next.expiry_date = defaultExpiryDate(value)
       }
+      if (key === 'make') {
+        next.model = ''
+        next.model_other = ''
+        if (value !== 'Other') next.make_other = ''
+      }
       return next
     })
   }
+
+  const modelOptions = getCarModelOptions(form.make)
+
+  const setAmount = (key, value) => set(key, formatNumberInput(value))
 
   const handleSubmit = async e => {
     e.preventDefault()
     setError(null)
 
     if (!form.name.trim() || !form.phone.trim()) {
-      setError('Client name and phone are required.')
+      const message = 'Insured name and contacts (phone) are required.'
+      setError(message)
+      toast(message, 'error')
       return
     }
 
-    if (
-      !form.registration.trim() ||
-      !form.make.trim() ||
-      !form.model.trim() ||
-      !form.insurer.trim() ||
-      !form.premium
-    ) {
-      setError('Fill in registration, make, model, insurer, and premium.')
+    if (!parseNumberInput(form.premium)) {
+      const message = 'Total premium is required.'
+      setError(message)
+      toast(message, 'error')
       return
     }
 
     if (!form.start_date || !form.expiry_date) {
-      setError('Policy start and expiry dates are required.')
+      const message = 'From (start) and Annual Renewal (expiry) dates are required.'
+      setError(message)
+      toast(message, 'error')
       return
     }
+
+    const registration = form.registration.trim() || `PENDING-${Date.now().toString().slice(-6)}`
+    const make =
+      form.make === 'Other'
+        ? form.make_other.trim() || 'Other'
+        : form.make.trim() || 'Unknown'
+    const model =
+      form.make === 'Other' || form.model === 'Other'
+        ? form.model_other.trim() || 'Other'
+        : form.model.trim() || 'Unknown'
+    const insurer =
+      form.insurer === 'Other'
+        ? form.insurer_other.trim() || 'Other'
+        : form.insurer.trim() || 'Unknown'
+
+    const renewalDates = [1, 2, 3, 4].map(n => form[`renewal_${n}`] || null)
+    const paymentAmounts = [1, 2, 3, 4].map(n => toNumberOrNull(form[`payment_${n}`]))
+    const balance = toNumberOrNull(form.balance)
+    const premium = Number(parseNumberInput(form.premium))
+
+    const schedule = buildPaymentScheduleFromPlan({
+      renewalDates,
+      paymentAmounts,
+      premium,
+      balance,
+    })
 
     setSaving(true)
 
@@ -100,240 +172,401 @@ export default function AddClientPage() {
           id_number: form.id_number,
           email: form.email,
           address: form.address,
+          notes: form.notes,
         },
         vehicle: {
-          registration: form.registration,
-          make: form.make,
-          model: form.model,
+          registration,
+          make,
+          model,
           year: form.year,
           engine_capacity: form.engine_capacity,
-          vehicle_value: form.vehicle_value,
+          vehicle_value: parseNumberInput(form.vehicle_value),
           use_type: form.use_type,
-          insurer: form.insurer,
+          insurer,
           policy_number: form.policy_number,
           policy_type: form.policy_type,
           start_date: form.start_date,
           expiry_date: form.expiry_date,
-          sum_insured: form.sum_insured,
-          premium: form.premium,
+          sum_insured: parseNumberInput(form.sum_insured),
+          premium: parseNumberInput(form.premium),
         },
+        schedule,
       })
 
+      toast('Client saved successfully.')
       navigate('/clients', { replace: true })
     } catch (err) {
-      setError(err.message || 'Could not save client. Try again.')
+      const message = err.message || 'Could not save client. Try again.'
+      setError(message)
+      toast(message, 'error')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="p-4 space-y-4 pb-8">
-      <div className="flex items-center gap-3">
+    <div className="space-y-4 p-4 pb-8">
+      <div>
         <Link
           to="/clients"
-          className="text-sm text-primary-700 font-medium"
+          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-bold text-primary-700 shadow-sm"
         >
-          ← Back
+          ← Back to portfolio
         </Link>
-        <h1 className="text-lg font-semibold text-gray-900">Add Client</h1>
       </div>
 
-      <p className="text-sm text-gray-500">
-        Register a new client and their first vehicle policy.
-      </p>
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+          New policy
+        </p>
+        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+          Add client
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Same fields as the Preliminary renewals sheet — insured, contacts,
+          cover, renewals, and payments. Fields marked{' '}
+          <span className="text-red-600">*</span> are required.
+        </p>
+      </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <section className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-800">Client details</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+          <h2 className="text-sm font-bold text-slate-900">Insured</h2>
 
-          <input
-            required
-            placeholder="Full name"
-            value={form.name}
-            onChange={e => set('name', e.target.value)}
-            className={INPUT}
-          />
+          <Field label="INSURED" required>
+            <input
+              required
+              placeholder="Full name"
+              value={form.name}
+              onChange={e => set('name', e.target.value)}
+              className={INPUT}
+            />
+          </Field>
 
-          <input
-            required
-            placeholder="Phone number"
-            value={form.phone}
-            onChange={e => set('phone', e.target.value)}
-            className={INPUT}
-          />
+          <Field label="CONTACTS" required>
+            <input
+              required
+              placeholder="Phone number"
+              value={form.phone}
+              onChange={e => set('phone', e.target.value)}
+              className={INPUT}
+            />
+          </Field>
 
-          <input
-            placeholder="National ID optional"
-            value={form.id_number}
-            onChange={e => set('id_number', e.target.value)}
-            className={INPUT}
-          />
+          <Field label="Comment">
+            <textarea
+              rows={2}
+              placeholder="Remarks, plate, insurer notes…"
+              value={form.notes}
+              onChange={e => set('notes', e.target.value)}
+              className={INPUT}
+            />
+          </Field>
 
-          <input
-            type="email"
-            placeholder="Email optional"
-            value={form.email}
-            onChange={e => set('email', e.target.value)}
-            className={INPUT}
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="National ID (optional)">
+              <input
+                placeholder="ID number"
+                value={form.id_number}
+                onChange={e => set('id_number', e.target.value)}
+                className={INPUT}
+              />
+            </Field>
+            <Field label="Email (optional)">
+              <input
+                type="email"
+                placeholder="Email"
+                value={form.email}
+                onChange={e => set('email', e.target.value)}
+                className={INPUT}
+              />
+            </Field>
+          </div>
 
-          <input
-            placeholder="Address optional"
-            value={form.address}
-            onChange={e => set('address', e.target.value)}
-            className={INPUT}
-          />
+          <Field label="Address (optional)">
+            <input
+              placeholder="Address"
+              value={form.address}
+              onChange={e => set('address', e.target.value)}
+              className={INPUT}
+            />
+          </Field>
         </section>
 
-        <section className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-800">Vehicle</h2>
+        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+          <h2 className="text-sm font-bold text-slate-900">Cover & dates</h2>
 
-          <input
-            required
-            placeholder="Registration e.g. KDA 123A"
-            value={form.registration}
-            onChange={e => set('registration', e.target.value)}
-            className={INPUT}
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              required
-              placeholder="Make e.g. Toyota"
-              value={form.make}
-              onChange={e => set('make', e.target.value)}
-              className={INPUT}
-            />
-            <input
-              required
-              placeholder="Model e.g. Axio"
-              value={form.model}
-              onChange={e => set('model', e.target.value)}
-              className={INPUT}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              type="number"
-              placeholder="Year"
-              value={form.year}
-              onChange={e => set('year', e.target.value)}
-              className={INPUT}
-            />
-            <input
-              placeholder="Engine e.g. 1500cc"
-              value={form.engine_capacity}
-              onChange={e => set('engine_capacity', e.target.value)}
-              className={INPUT}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              type="number"
-              placeholder="Vehicle value"
-              value={form.vehicle_value}
-              onChange={e => set('vehicle_value', e.target.value)}
-              className={INPUT}
-            />
+          <Field label="COVER TYPE">
             <select
-              value={form.use_type}
-              onChange={e => set('use_type', e.target.value)}
+              value={form.policy_type}
+              onChange={e => set('policy_type', e.target.value)}
               className={INPUT}
             >
-              {USE_TYPES.map(type => (
+              {POLICY_TYPES.map(type => (
                 <option key={type.value} value={type.value}>
                   {type.label}
                 </option>
               ))}
             </select>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-800">Policy</h2>
-
-          <input
-            required
-            placeholder="Insurer e.g. APA, Britam"
-            value={form.insurer}
-            onChange={e => set('insurer', e.target.value)}
-            className={INPUT}
-          />
-
-          <input
-            placeholder="Policy number optional"
-            value={form.policy_number}
-            onChange={e => set('policy_number', e.target.value)}
-            className={INPUT}
-          />
-
-          <select
-            value={form.policy_type}
-            onChange={e => set('policy_type', e.target.value)}
-            className={INPUT}
-          >
-            {POLICY_TYPES.map(type => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
+          </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-gray-500">Start date</label>
+            <Field label="FROM" required>
               <input
                 required
                 type="date"
                 value={form.start_date}
                 onChange={e => set('start_date', e.target.value)}
-                className={`mt-1 ${INPUT}`}
+                className={INPUT}
               />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500">Expiry date</label>
+            </Field>
+            <Field label="Annual Renewal" required>
               <input
                 required
                 type="date"
                 value={form.expiry_date}
                 onChange={e => set('expiry_date', e.target.value)}
-                className={`mt-1 ${INPUT}`}
+                className={INPUT}
               />
+            </Field>
+          </div>
+
+          <Field label="Total Premium" required>
+            <input
+              required
+              type="text"
+              inputMode="decimal"
+              placeholder="0"
+              value={form.premium}
+              onChange={e => setAmount('premium', e.target.value)}
+              className={INPUT}
+            />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Insurer">
+              <select
+                value={form.insurer}
+                onChange={e => set('insurer', e.target.value)}
+                className={INPUT}
+              >
+                {INSURER_OPTIONS.map(option => (
+                  <option key={option.value || 'empty'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Policy number (optional)">
+              <input
+                placeholder="Policy no."
+                value={form.policy_number}
+                onChange={e => set('policy_number', e.target.value)}
+                className={INPUT}
+              />
+            </Field>
+          </div>
+
+          {form.insurer === 'Other' && (
+            <Field label="Other insurer name">
+              <input
+                placeholder="Enter insurer name"
+                value={form.insurer_other}
+                onChange={e => set('insurer_other', e.target.value)}
+                className={INPUT}
+              />
+            </Field>
+          )}
+
+          <Field label="Sum insured (optional)">
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="0"
+              value={form.sum_insured}
+              onChange={e => setAmount('sum_insured', e.target.value)}
+              className={INPUT}
+            />
+          </Field>
+        </section>
+
+        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+          <h2 className="text-sm font-bold text-slate-900">Payment plan</h2>
+          <p className="text-xs text-slate-500">
+            Renewal dates and payment amounts (same as the agent sheet). Leave
+            blank if paid in full.
+          </p>
+
+          {[1, 2, 3, 4].map(n => (
+            <div key={n} className="grid grid-cols-2 gap-3">
+              <Field label={`Renewal ${n}`}>
+                <input
+                  type="date"
+                  value={form[`renewal_${n}`]}
+                  onChange={e => set(`renewal_${n}`, e.target.value)}
+                  className={INPUT}
+                />
+              </Field>
+              <Field label={`Payment ${n}`}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Amount"
+                  value={form[`payment_${n}`]}
+                  onChange={e => setAmount(`payment_${n}`, e.target.value)}
+                  className={INPUT}
+                />
+              </Field>
             </div>
+          ))}
+
+          <Field label="Bal.">
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="Outstanding balance"
+              value={form.balance}
+              onChange={e => setAmount('balance', e.target.value)}
+              className={INPUT}
+            />
+          </Field>
+        </section>
+
+        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+          <h2 className="text-sm font-bold text-slate-900">Vehicle (optional)</h2>
+          <p className="text-xs text-slate-500">
+            Fill when known. Otherwise the app stores placeholders you can update
+            later.
+          </p>
+
+          <Field label="Registration">
+            <input
+              placeholder="e.g. KDA 123A"
+              value={form.registration}
+              onChange={e => set('registration', e.target.value)}
+              className={INPUT}
+            />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Make of car">
+              <select
+                value={form.make}
+                onChange={e => set('make', e.target.value)}
+                className={INPUT}
+              >
+                {CAR_MAKE_OPTIONS.map(option => (
+                  <option key={option.value || 'empty'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Model">
+              <select
+                value={form.model}
+                onChange={e => set('model', e.target.value)}
+                disabled={!form.make || form.make === 'Other'}
+                className={INPUT}
+              >
+                {modelOptions.map(option => (
+                  <option key={option.value || 'empty'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          {form.make === 'Other' && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Other make">
+                <input
+                  placeholder="Enter make of car"
+                  value={form.make_other}
+                  onChange={e => set('make_other', e.target.value)}
+                  className={INPUT}
+                />
+              </Field>
+              <Field label="Model">
+                <input
+                  placeholder="Enter model"
+                  value={form.model_other}
+                  onChange={e => set('model_other', e.target.value)}
+                  className={INPUT}
+                />
+              </Field>
+            </div>
+          )}
+
+          {form.make !== 'Other' && form.model === 'Other' && (
+            <Field label="Other model">
+              <input
+                placeholder="Enter model"
+                value={form.model_other}
+                onChange={e => set('model_other', e.target.value)}
+                className={INPUT}
+              />
+            </Field>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Year">
+              <input
+                type="number"
+                placeholder="Year"
+                value={form.year}
+                onChange={e => set('year', e.target.value)}
+                className={INPUT}
+              />
+            </Field>
+            <Field label="Engine">
+              <input
+                placeholder="1500cc"
+                value={form.engine_capacity}
+                onChange={e => set('engine_capacity', e.target.value)}
+                className={INPUT}
+              />
+            </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <input
-              type="number"
-              placeholder="Sum insured"
-              value={form.sum_insured}
-              onChange={e => set('sum_insured', e.target.value)}
-              className={INPUT}
-            />
-            <input
-              required
-              type="number"
-              placeholder="Annual premium"
-              value={form.premium}
-              onChange={e => set('premium', e.target.value)}
-              className={INPUT}
-            />
+            <Field label="Vehicle value">
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
+                value={form.vehicle_value}
+                onChange={e => setAmount('vehicle_value', e.target.value)}
+                className={INPUT}
+              />
+            </Field>
+            <Field label="Use type">
+              <select
+                value={form.use_type}
+                onChange={e => set('use_type', e.target.value)}
+                className={INPUT}
+              >
+                {USE_TYPES.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
           </div>
         </section>
 
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-primary-800 text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-50"
+          className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save client'}
         </button>

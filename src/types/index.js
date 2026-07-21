@@ -27,6 +27,7 @@ export interface Client {
   id_number: string
   email?: string
   address?: string
+  notes?: string // Comment / free-text remarks from agent sheet
   status: ClientStatus
   created_at: string
   updated_at: string
@@ -64,20 +65,23 @@ export interface Vehicle {
 // ─── Payment Schedule ─────────────────────────────────────────────────────────
 
 export interface Installment {
-  index: number
+  number: number
   due_date: string     // ISO date string
   amount: number
   paid: boolean
-  paid_at?: string
+  paid_at?: string | null
+  /** Partial credit when not fully paid yet */
+  paid_amount?: number | null
 }
 
 export interface PaymentSchedule {
   id: string
   vehicle_id: string
+  agent_id?: string
   total_premium: number
   down_payment: number
   down_payment_paid: boolean
-  down_payment_paid_at?: string
+  down_payment_paid_at?: string | null
   installment_count: number
   installments: Installment[]
   created_at: string

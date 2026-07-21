@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="InsureAgent">
+  <rect width="512" height="512" fill="#0f172a"/>
+  <path
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="26"
+    stroke-linejoin="round"
+    d="M256 86c-44 26-102 34-154 38v152c0 84 58 144 154 180 96-36 154-96 154-180V124c-52-4-110-12-154-38z"
+  />
+  <rect x="236" y="176" width="40" height="168" rx="4" fill="#ffffff"/>
+  <path
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="30"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    d="M190 274l48 48 112-118"
+  />
+</svg>

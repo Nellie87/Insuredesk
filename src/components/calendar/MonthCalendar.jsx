@@ -27,34 +27,34 @@ export default function MonthCalendar({
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd })
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-card">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
         <button
           type="button"
           onClick={() => onMonthChange(addMonths(month, -1))}
-          className="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 text-lg leading-none"
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-lg leading-none text-slate-600"
           aria-label="Previous month"
         >
           ‹
         </button>
-        <div className="text-sm font-bold text-gray-900">
+        <div className="text-sm font-black tracking-tight text-slate-950">
           {format(month, 'MMMM yyyy')}
         </div>
         <button
           type="button"
           onClick={() => onMonthChange(addMonths(month, 1))}
-          className="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 text-lg leading-none"
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-lg leading-none text-slate-600"
           aria-label="Next month"
         >
           ›
         </button>
       </div>
 
-      <div className="grid grid-cols-7 border-b border-gray-100">
+      <div className="grid grid-cols-7 border-b border-slate-100">
         {WEEKDAYS.map(day => (
           <div
             key={day}
-            className="py-2 text-center text-[10px] font-bold text-gray-400 uppercase tracking-wide"
+            className="py-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400"
           >
             {day}
           </div>
@@ -74,17 +74,21 @@ export default function MonthCalendar({
               key={dateKey}
               type="button"
               onClick={() => onSelectDate(dateKey)}
-              className={`min-h-[72px] sm:min-h-[88px] p-1 border-b border-r border-gray-50 text-left transition-colors ${
-                !inMonth ? 'bg-gray-50/80' : 'bg-white'
-              } ${selected ? 'ring-2 ring-inset ring-primary-500 bg-primary-50/40' : 'active:bg-gray-50'}`}
+              className={`min-h-[72px] border-b border-r border-slate-50 p-1 text-left transition-colors ${
+                !inMonth ? 'bg-slate-50/80' : 'bg-white'
+              } ${
+                selected
+                  ? 'bg-primary-50/40 ring-2 ring-inset ring-primary-500'
+                  : 'active:bg-slate-50'
+              }`}
             >
               <div
-                className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full mb-0.5 ${
+                className={`mb-0.5 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
                   today
                     ? 'bg-primary-800 text-white'
                     : inMonth
-                      ? 'text-gray-800'
-                      : 'text-gray-300'
+                      ? 'text-slate-800'
+                      : 'text-slate-300'
                 }`}
               >
                 {format(day, 'd')}
@@ -96,14 +100,16 @@ export default function MonthCalendar({
                   return (
                     <div
                       key={event.id}
-                      className={`text-[8px] leading-tight truncate rounded px-0.5 py-px font-medium ${c.bg} ${c.text}`}
+                      className={`truncate rounded px-0.5 py-px text-[8px] font-medium leading-tight ${c.bg} ${c.text}`}
                     >
                       {event.title.split('·')[0].trim()}
                     </div>
                   )
                 })}
                 {dayEvents.length > 2 && (
-                  <span className="text-[8px] text-gray-400 px-0.5">+{dayEvents.length - 2} more</span>
+                  <span className="px-0.5 text-[8px] text-slate-400">
+                    +{dayEvents.length - 2} more
+                  </span>
                 )}
               </div>
             </button>
@@ -121,8 +127,13 @@ export function CalendarLegend() {
       {types.map(type => {
         const colors = EVENT_COLORS[type]
         return (
-          <div key={type} className="flex items-center gap-1.5 text-xs text-gray-600">
-            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${colors.dot}`} />
+          <div
+            key={type}
+            className="flex items-center gap-1.5 text-xs text-slate-600"
+          >
+            <span
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${colors.dot}`}
+            />
             {colors.label}
           </div>
         )

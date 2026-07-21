@@ -4,7 +4,10 @@ import { signIn, signUp } from '../lib/supabase'
 import { useAppStore } from '../store/appStore'
 
 const INPUT =
-  'mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
+
+const LABEL =
+  'text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400'
 
 export default function LoginPage() {
   const { session, authLoading } = useAppStore()
@@ -77,26 +80,30 @@ export default function LoginPage() {
   const isSignUp = mode === 'signup'
 
   return (
-    <div className="min-h-screen bg-primary-900 flex flex-col items-center justify-center p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 p-6">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="text-3xl font-bold text-white">InsureAgent</div>
-          <div className="text-primary-200 text-sm mt-1">Your insurance management system</div>
+        <div className="mb-8 text-center">
+          <div className="text-3xl font-black tracking-tight text-white">
+            InsureAgent
+          </div>
+          <div className="mt-1 text-sm text-primary-200">
+            Your insurance management system
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-xl space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="space-y-4 rounded-2xl border border-white/10 bg-white p-6 shadow-xl">
+          <h2 className="text-lg font-black tracking-tight text-slate-950">
             {isSignUp ? 'Create account' : 'Sign in'}
           </h2>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </div>
           )}
 
           {info && (
-            <div className="bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg px-3 py-2">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
               {info}
             </div>
           )}
@@ -108,7 +115,7 @@ export default function LoginPage() {
             {isSignUp && (
               <>
                 <div>
-                  <label className="text-xs font-medium text-gray-500">Full name</label>
+                  <label className={LABEL}>Full name</label>
                   <input
                     type="text"
                     required
@@ -119,7 +126,7 @@ export default function LoginPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-500">Phone</label>
+                  <label className={LABEL}>Phone</label>
                   <input
                     type="tel"
                     required
@@ -133,7 +140,7 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="text-xs font-medium text-gray-500">Email</label>
+              <label className={LABEL}>Email</label>
               <input
                 type="email"
                 required
@@ -145,7 +152,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-500">Password</label>
+              <label className={LABEL}>Password</label>
               <input
                 type="password"
                 required
@@ -160,7 +167,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-800 text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-50"
+              className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white disabled:opacity-50"
             >
               {loading
                 ? isSignUp
@@ -172,14 +179,14 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-slate-500">
             {isSignUp ? (
               <>
                 Already have an account?{' '}
                 <button
                   type="button"
                   onClick={() => switchMode('signin')}
-                  className="text-primary-700 font-medium"
+                  className="font-bold text-primary-700"
                 >
                   Sign in
                 </button>
@@ -190,7 +197,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => switchMode('signup')}
-                  className="text-primary-700 font-medium"
+                  className="font-bold text-primary-700"
                 >
                   Sign up
                 </button>

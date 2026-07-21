@@ -1,28 +1,32 @@
 const STYLES = {
-  active:        'bg-success-50 text-success-700',
-  overdue:       'bg-danger-50 text-danger-700',
-  expiring_soon: 'bg-warning-50 text-warning-700',
-  fully_paid:    'bg-success-50 text-success-700',
-  lapsed:        'bg-gray-100 text-gray-500',
-  paid:          'bg-success-50 text-success-700',
-  due:           'bg-warning-50 text-warning-700',
-  pending:       'bg-gray-100 text-gray-600',
+  active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  overdue: 'border-red-200 bg-danger-50 text-danger-700',
+  expiring_soon: 'border-amber-200 bg-warning-50 text-warning-700',
+  fully_paid: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  lapsed: 'border-slate-200 bg-slate-100 text-slate-500',
+  paid: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  due: 'border-amber-200 bg-warning-50 text-warning-700',
+  pending: 'border-slate-200 bg-slate-100 text-slate-600',
 }
 
 const LABELS = {
-  active:        'Active',
-  overdue:       'Overdue',
+  active: 'Active',
+  overdue: 'Overdue',
   expiring_soon: 'Due',
-  fully_paid:    'Paid',
-  lapsed:        'Lapsed',
-  paid:          'Paid',
-  due:           'Due',
-  pending:       'Pending',
+  fully_paid: 'Paid',
+  lapsed: 'Lapsed',
+  paid: 'Paid',
+  due: 'Due',
+  pending: 'Pending',
 }
 
 export default function StatusBadge({ status }) {
   return (
-    <span className={`text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full ${STYLES[status] ?? 'bg-gray-100 text-gray-500'}`}>
+    <span
+      className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+        STYLES[status] ?? 'border-slate-200 bg-slate-100 text-slate-500'
+      }`}
+    >
       {LABELS[status] ?? status}
     </span>
   )

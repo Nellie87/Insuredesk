@@ -4,10 +4,14 @@ import { format, parseISO, startOfMonth, isAfter } from 'date-fns'
 import { usePayments } from '../hooks/usePayments'
 import { useClients } from '../hooks/useClients'
 import { formatKSh, getVehicleSchedules } from '../utils/calculator'
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput'
+import { toast } from '../store/toastStore'
 import LottieLoader from '../components/ui/LottieLoader'
 
 const INPUT =
-  'w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
+
+const LABEL = 'text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400'
 
 const METHODS = [
   { value: 'mpesa', label: 'M-Pesa' },
@@ -20,7 +24,7 @@ const METHOD_LABELS = Object.fromEntries(METHODS.map(m => [m.value, m.label]))
 
 export default function PaymentsPage() {
   const { payments, loading, saving, error, logPayment } = usePayments()
-  const { clients } = useClients()
+  const { clients, refetch: refetchClients } = useClients()
 
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
@@ -44,7 +48,10 @@ export default function PaymentsPage() {
     return payments
       .filter(p => {
         try {
-          return isAfter(parseISO(p.date), monthStart) || p.date === format(monthStart, 'yyyy-MM-dd')
+          return (
+            isAfter(parseISO(p.date), monthStart) ||
+            p.date === format(monthStart, 'yyyy-MM-dd')
+          )
         } catch {
           return false
         }
@@ -54,109 +61,154 @@ export default function PaymentsPage() {
 
   const handleSubmit = async e => {
     e.preventDefault()
-    if (!form.clientId || !form.vehicleId || !form.amount) return
+    if (!form.clientId || !form.vehicleId || !parseNumberInput(form.amount)) {
+      toast('Client, vehicle, and amount are required.', 'error')
+      return
+    }
 
     const vehicle = vehicleOptions.find(v => v.id === form.vehicleId)
     const schedule = vehicle ? getVehicleSchedules(vehicle)[0] : null
 
-    await logPayment({
-      clientId: form.clientId,
-      vehicleId: form.vehicleId,
-      scheduleId: schedule?.id,
-      amount: form.amount,
-      method: form.method,
-      reference: form.reference,
-      notes: form.notes,
-      date: form.date,
-    })
+    try {
+      await logPayment({
+        clientId: form.clientId,
+        vehicleId: form.vehicleId,
+        scheduleId: schedule?.id,
+        amount: parseNumberInput(form.amount),
+        method: form.method,
+        reference: form.reference,
+        notes: form.notes,
+        date: form.date,
+      })
+      await refetchClients()
 
-    setForm({
-      clientId: '',
-      vehicleId: '',
-      amount: '',
-      method: 'mpesa',
-      reference: '',
-      notes: '',
-      date: new Date().toISOString().split('T')[0],
-    })
-    setShowForm(false)
+      setForm({
+        clientId: '',
+        vehicleId: '',
+        amount: '',
+        method: 'mpesa',
+        reference: '',
+        notes: '',
+        date: new Date().toISOString().split('T')[0],
+      })
+      setShowForm(false)
+      toast('Payment logged — portfolio balance updated.')
+    } catch (err) {
+      toast(err.message || 'Could not log payment.', 'error')
+    }
   }
 
   return (
-    <div className="p-4 space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Payments</h1>
-          <p className="text-sm text-gray-500">Log and review client payments.</p>
+    <div className="space-y-4 p-4 pb-8">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+            Transactions
+          </p>
+          <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+            Payments
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Log and review client payments.
+          </p>
         </div>
         <button
           type="button"
           onClick={() => setShowForm(prev => !prev)}
-          className="bg-primary-800 text-white text-sm px-3 py-1.5 rounded-xl font-semibold"
+          className="shrink-0 rounded-xl bg-primary-800 px-3 py-1.5 text-sm font-semibold text-white"
         >
           {showForm ? 'Close' : '+ Log'}
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl p-4 bg-primary-50 text-primary-800">
-          <div className="text-2xl font-bold">{formatKSh(monthTotal)}</div>
-          <div className="text-xs font-medium mt-0.5 opacity-80">This month</div>
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="rounded-2xl border border-blue-100 bg-white p-3.5 shadow-card">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            This month
+          </p>
+          <p className="mt-2 break-words text-base font-black text-blue-800">
+            {formatKSh(monthTotal)}
+          </p>
         </div>
-        <div className="rounded-xl p-4 bg-white border border-gray-200">
-          <div className="text-2xl font-bold text-gray-900">{payments.length}</div>
-          <div className="text-xs font-medium text-gray-500 mt-0.5">Total logged</div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            Total logged
+          </p>
+          <p className="mt-2 text-base font-black text-slate-950">
+            {payments.length}
+          </p>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-800">Log payment</h2>
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card"
+        >
+          <h2 className="text-sm font-bold text-slate-900">Log payment</h2>
 
-          <select
-            required
-            value={form.clientId}
-            onChange={e => {
-              set('clientId', e.target.value)
-              set('vehicleId', '')
-            }}
-            className={INPUT}
-          >
-            <option value="">Select client</option>
-            {clientOptions.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <div>
+            <label className={LABEL}>
+              Client <span className="normal-case text-red-600">*</span>
+            </label>
+            <select
+              required
+              value={form.clientId}
+              onChange={e => {
+                set('clientId', e.target.value)
+                set('vehicleId', '')
+              }}
+              className={`mt-1.5 ${INPUT}`}
+            >
+              <option value="">Select client</option>
+              {clientOptions.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            required
-            value={form.vehicleId}
-            onChange={e => set('vehicleId', e.target.value)}
-            className={INPUT}
-            disabled={!form.clientId}
-          >
-            <option value="">Select vehicle</option>
-            {vehicleOptions.map(v => (
-              <option key={v.id} value={v.id}>
-                {v.registration} · {v.make} {v.model}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className={LABEL}>
+              Vehicle <span className="normal-case text-red-600">*</span>
+            </label>
+            <select
+              required
+              value={form.vehicleId}
+              onChange={e => set('vehicleId', e.target.value)}
+              className={`mt-1.5 ${INPUT}`}
+              disabled={!form.clientId}
+            >
+              <option value="">Select vehicle</option>
+              {vehicleOptions.map(v => (
+                <option key={v.id} value={v.id}>
+                  {v.registration} · {v.make} {v.model}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <input
-            required
-            type="number"
-            placeholder="Amount"
-            value={form.amount}
-            onChange={e => set('amount', e.target.value)}
-            className={INPUT}
-          />
+          <div>
+            <label className={LABEL}>
+              Amount <span className="normal-case text-red-600">*</span>
+            </label>
+            <input
+              required
+              type="text"
+              inputMode="decimal"
+              placeholder="e.g. 12,500"
+              value={form.amount}
+              onChange={e => set('amount', formatNumberInput(e.target.value))}
+              className={`mt-1.5 ${INPUT}`}
+            />
+          </div>
 
           <select
             value={form.method}
@@ -164,7 +216,9 @@ export default function PaymentsPage() {
             className={INPUT}
           >
             {METHODS.map(m => (
-              <option key={m.value} value={m.value}>{m.label}</option>
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
             ))}
           </select>
 
@@ -192,7 +246,7 @@ export default function PaymentsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full bg-primary-800 text-white rounded-xl py-3 font-semibold text-sm disabled:opacity-50"
+            className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save payment'}
           </button>
@@ -202,12 +256,14 @@ export default function PaymentsPage() {
       {loading ? (
         <LottieLoader label="Loading payments..." />
       ) : payments.length === 0 ? (
-        <div className="text-center text-gray-400 py-12 bg-white rounded-2xl border border-gray-200">
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-400">
           No payments logged yet.
         </div>
       ) : (
-        <div className="space-y-2">
-          <h2 className="text-xs font-bold tracking-wider text-gray-500 uppercase">Recent</h2>
+        <div className="space-y-2.5">
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            Recent
+          </h2>
           {payments.map(payment => {
             const clientName = payment.clients?.name ?? 'Client'
             const reg = payment.vehicles?.registration ?? ''
@@ -215,21 +271,23 @@ export default function PaymentsPage() {
               <Link
                 key={payment.id}
                 to={`/clients/${payment.client_id}`}
-                className="block bg-white rounded-xl border border-gray-200 p-3"
+                className="block rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card"
               >
-                <div className="flex justify-between items-start gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">{clientName}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="break-words text-sm font-bold text-slate-900">
+                      {clientName}
+                    </div>
+                    <div className="mt-0.5 break-words text-xs text-slate-500">
                       {reg && `${reg} · `}
                       {METHOD_LABELS[payment.method] ?? payment.method}
                       {payment.reference && ` · ${payment.reference}`}
                     </div>
-                    <div className="text-[10px] text-gray-400 mt-1">
+                    <div className="mt-1 text-[10px] text-slate-400">
                       {format(parseISO(payment.date), 'd MMM yyyy')}
                     </div>
                   </div>
-                  <div className="text-sm font-bold text-success-700">
+                  <div className="shrink-0 text-sm font-black text-emerald-700">
                     {formatKSh(payment.amount)}
                   </div>
                 </div>

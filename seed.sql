@@ -63,12 +63,12 @@ BEGIN
     email = EXCLUDED.email;
 
   -- ─── Clients (mixed statuses for portfolio filters) ───────────────────────
-  INSERT INTO clients (id, agent_id, name, phone, id_number, email, address, status, created_at, updated_at)
+  INSERT INTO clients (id, agent_id, name, phone, id_number, email, address, notes, status, created_at, updated_at)
   VALUES
-    (c1, agent, 'James Mwangi',   '0722111222', '28456123', 'james.m@email.com',  'Westlands, Nairobi',     'active',         '2025-09-01', '2026-03-01'),
-    (c2, agent, 'Grace Wanjiku',  '0733444555', '30129876', 'grace.w@email.com',  'Kilimani, Nairobi',      'overdue',        '2025-06-15', '2026-02-20'),
-    (c3, agent, 'Peter Ochieng',  '0711666777', '24567890', NULL,                 'Kisumu CBD',             'expiring_soon',  '2024-11-10', '2026-01-15'),
-    (c4, agent, 'Mary Akinyi',    '0700888999', '27890123', 'mary.a@email.com',   'Mombasa Road, Nairobi',  'fully_paid',     '2025-01-20', '2025-12-01')
+    (c1, agent, 'James Mwangi',   '0722111222', '28456123', 'james.m@email.com',  'Westlands, Nairobi',     'APA — KDA 123A Toyota Axio', 'active',         '2025-09-01', '2026-03-01'),
+    (c2, agent, 'Grace Wanjiku',  '0733444555', '30129876', 'grace.w@email.com',  'Kilimani, Nairobi',      NULL,                        'overdue',        '2025-06-15', '2026-02-20'),
+    (c3, agent, 'Peter Ochieng',  '0711666777', '24567890', NULL,                 'Kisumu CBD',             NULL,                        'expiring_soon',  '2024-11-10', '2026-01-15'),
+    (c4, agent, 'Mary Akinyi',    '0700888999', '27890123', 'mary.a@email.com',   'Mombasa Road, Nairobi',  NULL,                        'fully_paid',     '2025-01-20', '2025-12-01')
   ON CONFLICT (id) DO NOTHING;
 
   -- ─── Vehicles ─────────────────────────────────────────────────────────────
