@@ -181,11 +181,22 @@ function Field({ label, required, children, className = '' }) {
 function DetailItem({ label, value, className = '' }) {
   return (
     <div className={className}>
-      <dt className="text-sm font-medium text-slate-500">{label}</dt>
-      <dd className="mt-1 break-words text-base font-semibold text-slate-800">
+      <dt className="text-xs font-bold uppercase tracking-[0.06em] text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1.5 break-words text-[15px] font-medium text-slate-800">
         {value || '—'}
       </dd>
     </div>
+  )
+}
+
+function ProfileSection({ title, children }) {
+  return (
+    <section className="border-b border-slate-100 py-6 last:border-b-0 last:pb-0 first:pt-0">
+      <h3 className="text-base font-semibold text-slate-800">{title}</h3>
+      <div className="mt-4">{children}</div>
+    </section>
   )
 }
 
@@ -202,7 +213,7 @@ function SummaryCard({
         {label}
       </p>
       <p
-        className={`mt-2 break-words text-xl font-black leading-tight tracking-tight sm:text-2xl ${valueClassName}`}
+        className={`mt-2 break-words text-xl font-bold leading-tight tracking-tight sm:text-2xl ${valueClassName}`}
       >
         {value}
       </p>
@@ -244,9 +255,9 @@ function NotesBlock({ title, value, onSave }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+    <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+        <p className="text-xs font-bold uppercase tracking-[0.06em] text-slate-500">
           {title}
         </p>
         {!editing ? (
@@ -334,13 +345,13 @@ function SectionEditBar({ editing, onEdit, onCancel, onSave, saving }) {
 
 function PremiumPanel({ totalPremium, amountPaid, outstanding, progress, fullyPaid, nextDue }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
       <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <div className="p-4 sm:p-5">
           <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
             Total premium
           </p>
-          <p className="mt-2 break-words text-2xl font-black tracking-tight text-slate-950">
+          <p className="mt-2 break-words text-2xl font-bold tracking-tight text-slate-950">
             {formatKSh(totalPremium)}
           </p>
         </div>
@@ -348,7 +359,7 @@ function PremiumPanel({ totalPremium, amountPaid, outstanding, progress, fullyPa
           <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
             Amount paid
           </p>
-          <p className="mt-2 break-words text-2xl font-black tracking-tight text-emerald-700">
+          <p className="mt-2 break-words text-2xl font-bold tracking-tight text-emerald-700">
             {formatKSh(amountPaid)}
           </p>
         </div>
@@ -357,7 +368,7 @@ function PremiumPanel({ totalPremium, amountPaid, outstanding, progress, fullyPa
             Outstanding balance
           </p>
           <p
-            className={`mt-2 break-words text-2xl font-black tracking-tight ${
+            className={`mt-2 break-words text-2xl font-bold tracking-tight ${
               fullyPaid ? 'text-emerald-700' : 'text-amber-700'
             }`}
           >
@@ -413,7 +424,7 @@ function PremiumPanel({ totalPremium, amountPaid, outstanding, progress, fullyPa
                 Due {formatDate(nextDue.due_date)}
               </p>
             </div>
-            <p className="text-xl font-black text-amber-900">
+            <p className="text-xl font-bold text-amber-900">
               {formatKSh(nextDue.amount)}
             </p>
           </div>
@@ -685,14 +696,14 @@ function VehicleCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+    <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
       <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-4 py-4 text-white sm:px-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
               Insured vehicle
             </p>
-            <h3 className="mt-1.5 break-words text-xl font-black tracking-tight">
+            <h3 className="mt-1.5 break-words text-xl font-bold tracking-tight">
               {vehicle.year ? `${vehicle.year} ` : ''}
               {vehicle.make} {vehicle.model}
             </h3>
@@ -1490,151 +1501,201 @@ export default function ClientDetailPage() {
       <div>
         <Link
           to="/clients"
-          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-bold text-primary-700 shadow-sm transition hover:border-primary-200 hover:bg-primary-50"
+          className="inline-flex items-center text-sm font-semibold text-primary-600 transition hover:text-primary-700"
         >
           ← Back to portfolio
         </Link>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-        <div className="bg-gradient-to-br from-primary-800 via-primary-700 to-primary-600 p-4 text-white sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/15 text-base font-black shadow-inner sm:h-14 sm:w-14 sm:text-lg">
-                {getInitials(client.name)}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/65">
-                  Client profile
-                </p>
-                <h1 className="mt-1 break-words text-2xl font-black tracking-tight sm:text-3xl">
-                  {client.name}
-                </h1>
-                <div className="mt-2 flex flex-col gap-1 text-base text-white/80 sm:flex-row sm:flex-wrap sm:gap-x-4">
-                  <span className="break-all">
-                    {client.phone || 'No phone number'}
-                  </span>
-                  {client.email && (
-                    <span className="break-all">{client.email}</span>
-                  )}
-                </div>
-              </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
+        <div className="flex flex-col lg:flex-row">
+          <aside className="flex flex-col items-center bg-slate-50 px-6 py-8 text-center lg:w-[280px] lg:shrink-0 lg:border-r lg:border-slate-100 xl:w-[300px]">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-200 text-2xl font-bold text-slate-600 ring-4 ring-white">
+              {getInitials(client.name)}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
+            <h1 className="mt-5 break-words text-xl font-bold tracking-tight text-slate-900">
+              {client.name}
+            </h1>
+            <p className="mt-1.5 text-sm capitalize text-slate-500">
+              {vehicles.length}{' '}
+              {vehicles.length === 1 ? 'policy' : 'policies'}
+              {client.status
+                ? ` · ${String(client.status).replace(/_/g, ' ')}`
+                : ''}
+            </p>
+            {client.created_at && (
+              <p className="mt-1 text-xs text-slate-400">
+                Client since {formatDate(client.created_at)}
+              </p>
+            )}
+
+            <div className="mt-4">
               <StatusBadge status={client.status} />
+            </div>
+
+            <div className="mt-6 w-full space-y-2.5">
               <Link
                 to="/payments"
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-base font-bold text-primary-800 shadow-sm transition hover:bg-primary-50 lg:flex-none"
+                className="flex w-full items-center justify-center rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700"
               >
                 Log payment
               </Link>
+              {client.phone && (
+                <a
+                  href={`tel:${client.phone}`}
+                  className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-primary-200 hover:bg-primary-50"
+                >
+                  Call client
+                </a>
+              )}
             </div>
-          </div>
 
-          <div className="mt-5">
-            <div className="flex items-center justify-between gap-3 text-sm font-semibold text-white/70">
-              <span>Portfolio payment progress</span>
-              <span className="shrink-0">
-                {Math.round(portfolioProgress)}% paid
-              </span>
+            <div className="mt-6 w-full">
+              <div className="flex items-center justify-between gap-2 text-xs font-medium text-slate-500">
+                <span>Paid</span>
+                <span>{Math.round(portfolioProgress)}%</span>
+              </div>
+              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-primary-500 transition-all duration-500"
+                  style={{ width: `${portfolioProgress}%` }}
+                />
+              </div>
             </div>
-            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/20">
-              <div
-                className="h-full rounded-full bg-white transition-all duration-500"
-                style={{ width: `${portfolioProgress}%` }}
+          </aside>
+
+          <div className="min-w-0 flex-1 px-5 py-6 sm:px-8 sm:py-7">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-slate-400">Client details</p>
+              <SectionEditBar
+                editing={editingInsured}
+                onEdit={startInsuredEdit}
+                onCancel={() => setEditingInsured(false)}
+                onSave={saveInsured}
+                saving={savingInsured}
               />
             </div>
+
+            {editingInsured ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Name" required>
+                  <input
+                    value={insuredForm.name}
+                    onChange={e =>
+                      setInsuredForm(prev => ({ ...prev, name: e.target.value }))
+                    }
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Phone" required>
+                  <input
+                    value={insuredForm.phone}
+                    onChange={e =>
+                      setInsuredForm(prev => ({ ...prev, phone: e.target.value }))
+                    }
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="National ID">
+                  <input
+                    value={insuredForm.id_number}
+                    onChange={e =>
+                      setInsuredForm(prev => ({
+                        ...prev,
+                        id_number: e.target.value,
+                      }))
+                    }
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Email">
+                  <input
+                    type="email"
+                    value={insuredForm.email}
+                    onChange={e =>
+                      setInsuredForm(prev => ({ ...prev, email: e.target.value }))
+                    }
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Address" className="sm:col-span-2">
+                  <input
+                    value={insuredForm.address}
+                    onChange={e =>
+                      setInsuredForm(prev => ({
+                        ...prev,
+                        address: e.target.value,
+                      }))
+                    }
+                    className={INPUT}
+                  />
+                </Field>
+              </div>
+            ) : (
+              <>
+                <ProfileSection title="Contact information">
+                  <dl className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+                    <DetailItem
+                      label="Email"
+                      value={client.email || 'Not provided'}
+                    />
+                    <DetailItem
+                      label="Phone number"
+                      value={client.phone || 'Not provided'}
+                    />
+                    <DetailItem
+                      label="Address"
+                      value={client.address || 'Not provided'}
+                    />
+                  </dl>
+                </ProfileSection>
+
+                <ProfileSection title="Personal information">
+                  <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <DetailItem
+                      label="National ID"
+                      value={client.id_number || 'Not provided'}
+                    />
+                    <DetailItem
+                      label="Outstanding balance"
+                      value={formatKSh(totalOutstanding)}
+                    />
+                  </dl>
+                </ProfileSection>
+
+                <ProfileSection title="Policies">
+                  {vehicles.length === 0 ? (
+                    <p className="text-sm text-slate-400">No policies yet.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {vehicles.map(vehicle => (
+                        <span
+                          key={vehicle.id}
+                          className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700"
+                        >
+                          {vehicle.registration ||
+                            vehicle.chassis ||
+                            `${vehicle.make} ${vehicle.model}`.trim() ||
+                            'Vehicle'}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </ProfileSection>
+
+                <div className="pt-2">
+                  <NotesBlock
+                    title="General client notes"
+                    value={client.notes}
+                    onSave={text =>
+                      updateClient(client.id, { notes: text.trim() || null })
+                    }
+                  />
+                </div>
+              </>
+            )}
           </div>
-        </div>
-
-        <div className="space-y-4 p-4 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className={SECTION_TITLE}>Insured details</h2>
-            <SectionEditBar
-              editing={editingInsured}
-              onEdit={startInsuredEdit}
-              onCancel={() => setEditingInsured(false)}
-              onSave={saveInsured}
-              saving={savingInsured}
-            />
-          </div>
-
-          {editingInsured ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Name" required>
-                <input
-                  value={insuredForm.name}
-                  onChange={e =>
-                    setInsuredForm(prev => ({ ...prev, name: e.target.value }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Phone" required>
-                <input
-                  value={insuredForm.phone}
-                  onChange={e =>
-                    setInsuredForm(prev => ({ ...prev, phone: e.target.value }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="National ID">
-                <input
-                  value={insuredForm.id_number}
-                  onChange={e =>
-                    setInsuredForm(prev => ({
-                      ...prev,
-                      id_number: e.target.value,
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Email">
-                <input
-                  type="email"
-                  value={insuredForm.email}
-                  onChange={e =>
-                    setInsuredForm(prev => ({ ...prev, email: e.target.value }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Address" className="sm:col-span-2">
-                <input
-                  value={insuredForm.address}
-                  onChange={e =>
-                    setInsuredForm(prev => ({
-                      ...prev,
-                      address: e.target.value,
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-            </div>
-          ) : (
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <DetailItem label="ID number" value={client.id_number} />
-              <DetailItem
-                label="Phone number"
-                value={client.phone || 'Not provided'}
-              />
-              <DetailItem label="Email address" value={client.email} />
-              <DetailItem label="Address" value={client.address} />
-            </dl>
-          )}
-
-          <NotesBlock
-            title="General client notes"
-            value={client.notes}
-            onSave={text =>
-              updateClient(client.id, { notes: text.trim() || null })
-            }
-          />
         </div>
       </section>
 
@@ -1684,7 +1745,7 @@ export default function ClientDetailPage() {
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div className="min-w-0">
               <p className={EYEBROW}>Portfolio</p>
-              <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
                 Vehicles and policies
               </h2>
               <p className="mt-1 text-base text-slate-500">
@@ -1724,7 +1785,7 @@ export default function ClientDetailPage() {
           <div className="flex flex-col gap-3">
             <div className="min-w-0">
               <p className={EYEBROW}>Transactions</p>
-              <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
                 Payment history
               </h2>
               <p className="mt-1 text-base text-slate-500">
@@ -1734,14 +1795,14 @@ export default function ClientDetailPage() {
 
             <Link
               to="/payments"
-              className="inline-flex w-full items-center justify-center rounded-xl bg-primary-700 px-4 py-3 text-base font-bold text-white shadow-sm transition hover:bg-primary-800"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-primary-700 px-4 py-3 text-base font-bold text-white shadow-sm transition hover:bg-primary-600"
             >
               Log payment
             </Link>
           </div>
 
           {paymentsLoading ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-base text-slate-400">
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-4 text-base text-slate-400">
               Loading payments...
             </div>
           ) : clientPayments.length === 0 ? (
@@ -1749,7 +1810,7 @@ export default function ClientDetailPage() {
               No payments have been logged for this client.
             </EmptyState>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
               <div className="divide-y divide-slate-100">
                 {clientPayments.map(payment => {
                   const vehicle = vehicles.find(
@@ -1810,7 +1871,7 @@ export default function ClientDetailPage() {
                           <p className="text-sm font-medium text-slate-400">
                             Amount
                           </p>
-                          <p className="mt-1 text-xl font-black text-emerald-700">
+                          <p className="mt-1 text-xl font-bold text-emerald-700">
                             {formatKSh(payment.amount)}
                           </p>
                         </div>

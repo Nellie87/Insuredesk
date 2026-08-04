@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Insurance Agent Manager',
         short_name: 'InsureAgent',
         description: 'Manage your clients, vehicles, payments and commissions',
-        theme_color: '#1e3a8a',
-        background_color: '#0f172a',
+        theme_color: '#2563eb',
+        background_color: '#f3f6fb',
         display: 'standalone',
         orientation: 'any',
         icons: [

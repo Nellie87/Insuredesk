@@ -93,10 +93,10 @@ export default function ImportClientsPage() {
       </div>
 
       <div className="lg:hidden">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
           Bulk upload
         </p>
-        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+        <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
           Import from Excel
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -112,12 +112,12 @@ export default function ImportClientsPage() {
         sheet does not include them.
       </p>
 
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+      <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-xl bg-primary-800 px-4 py-2 text-sm font-bold text-white"
+            className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-bold text-white"
           >
             Choose file
           </button>
@@ -185,7 +185,7 @@ export default function ImportClientsPage() {
               type="button"
               onClick={handleImport}
               disabled={importing || preview.validCount === 0}
-              className="rounded-xl bg-primary-800 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
             >
               {importing ? 'Importing...' : `Import ${preview.validCount}`}
             </button>

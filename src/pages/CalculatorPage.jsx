@@ -4,12 +4,7 @@ import { formatNumberInput, parseNumberInput } from '../utils/numberInput'
 import { toast } from '../store/toastStore'
 import { format } from 'date-fns'
 import PageShell from '../components/layout/PageShell'
-
-const INPUT =
-  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
-
-const LABEL =
-  'text-xs font-bold uppercase tracking-[0.1em] text-slate-500'
+import { INPUT_SPACED as INPUT, LABEL, BTN_PRIMARY } from '../constants/formStyles'
 
 const DEFAULT_INPUT = {
   total_premium: '',
@@ -75,10 +70,10 @@ export default function CalculatorPage() {
   return (
     <PageShell>
       <div className="lg:hidden">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
           Tools
         </p>
-        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+        <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
           Policy calculator
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -87,7 +82,7 @@ export default function CalculatorPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+        <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
           <div>
             <label className={LABEL}>
               Total premium (KSh){' '}
@@ -138,7 +133,7 @@ export default function CalculatorPage() {
                   onClick={() => set('installment_months', m)}
                   className={`rounded-xl border py-2 text-sm font-semibold transition-colors ${
                     input.installment_months === m
-                      ? 'border-primary-800 bg-primary-800 text-white'
+                      ? 'border-primary-600 bg-primary-600 text-white'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                   }`}
                 >
@@ -181,7 +176,7 @@ export default function CalculatorPage() {
           <button
             type="button"
             onClick={handleCalculate}
-            className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white transition hover:bg-primary-700"
+            className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white transition hover:bg-primary-700"
           >
             Calculate
           </button>
@@ -190,7 +185,7 @@ export default function CalculatorPage() {
         <div>
           {result ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="text-base font-bold text-slate-900">
@@ -224,15 +219,15 @@ export default function CalculatorPage() {
                   <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                     Down payment
                   </p>
-                  <p className="mt-2 break-words text-base font-black text-blue-800 sm:text-xl">
+                  <p className="mt-2 break-words text-base font-bold text-blue-800 sm:text-xl">
                     {formatKSh(result.down_payment)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card sm:p-4">
+                <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-card sm:p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                     Balance
                   </p>
-                  <p className="mt-2 break-words text-base font-black text-slate-950 sm:text-xl">
+                  <p className="mt-2 break-words text-base font-bold text-slate-950 sm:text-xl">
                     {formatKSh(result.remaining_balance)}
                   </p>
                 </div>
@@ -240,7 +235,7 @@ export default function CalculatorPage() {
                   <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                     Monthly installment
                   </p>
-                  <p className="mt-2 break-words text-base font-black text-emerald-700 sm:text-xl">
+                  <p className="mt-2 break-words text-base font-bold text-emerald-700 sm:text-xl">
                     {formatKSh(result.monthly_installment)}
                   </p>
                 </div>
@@ -248,13 +243,13 @@ export default function CalculatorPage() {
                   <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                     Your commission
                   </p>
-                  <p className="mt-2 break-words text-base font-black text-amber-700 sm:text-xl">
+                  <p className="mt-2 break-words text-base font-bold text-amber-700 sm:text-xl">
                     {formatKSh(result.commission)}
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
                 <h2 className="text-sm font-bold text-slate-900">
                   Installment schedule
                 </h2>

@@ -45,16 +45,16 @@ function getInitials(name = '') {
 }
 
 function navClass({ isActive }) {
-  return `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+  return `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
     isActive
-      ? 'bg-primary-800 text-white shadow-sm'
-      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+      ? 'bg-step-active text-white shadow-soft'
+      : 'text-slate-600 hover:bg-primary-50 hover:text-primary-800'
   }`
 }
 
 function mobileNavClass({ isActive }) {
   return `flex flex-1 flex-col items-center gap-1 py-2.5 transition-colors ${
-    isActive ? 'text-primary-800' : 'text-slate-400'
+    isActive ? 'text-primary-600' : 'text-slate-400'
   }`
 }
 
@@ -67,60 +67,60 @@ export default function AppLayout() {
     (location.pathname.startsWith('/clients/') ? 'Client detail' : 'InsureAgent')
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="app-canvas">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
-        <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-800 text-sm font-black text-white">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200/80 bg-white/90 backdrop-blur-md lg:flex">
+        <div className="flex h-16 items-center gap-3 border-b border-slate-200/80 px-5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-step-active text-sm font-extrabold text-white shadow-soft">
             IA
           </div>
           <div className="min-w-0">
-            <div className="truncate text-sm font-black tracking-tight text-primary-900">
+            <div className="truncate text-sm font-extrabold tracking-tight text-slate-900">
               InsureAgent
             </div>
-            <div className="truncate text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <div className="truncate text-[11px] font-medium text-slate-400">
               Agent workspace
             </div>
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-          <p className="mb-1 px-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
+          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
             Main
           </p>
           {PRIMARY_NAV.map(({ to, label, icon }) => (
             <NavLink key={to} to={to} className={navClass}>
-              <span className="w-5 text-center text-base leading-none">{icon}</span>
+              <span className="w-5 text-center text-base leading-none opacity-80">{icon}</span>
               {label}
             </NavLink>
           ))}
 
-          <p className="mb-1 mt-4 px-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+          <p className="mb-1.5 mt-5 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
             Tools
           </p>
           {SECONDARY_NAV.map(({ to, label, icon }) => (
             <NavLink key={to} to={to} className={navClass}>
-              <span className="w-5 text-center text-base leading-none">{icon}</span>
+              <span className="w-5 text-center text-base leading-none opacity-80">{icon}</span>
               {label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="border-t border-slate-200 p-3">
+        <div className="border-t border-slate-200/80 p-3">
           <Link
             to="/clients/add"
-            className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-800 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-primary-700"
+            className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-3 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700"
           >
             <span className="text-lg leading-none">+</span>
             Add client
           </Link>
 
-          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary-200 bg-primary-100 text-xs font-bold text-primary-800">
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-canvas/60 px-3 py-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700">
               {getInitials(agent?.name)}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-slate-900">
+              <div className="truncate text-sm font-semibold text-slate-900">
                 {agent?.name ?? 'Agent'}
               </div>
               <div className="truncate text-[11px] text-slate-500">
@@ -134,19 +134,19 @@ export default function AppLayout() {
       {/* Main column */}
       <div className="flex min-h-screen flex-col lg:pl-64">
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200/70 bg-white/80 px-4 py-3 backdrop-blur-md lg:hidden">
           <div className="min-w-0">
-            <div className="text-base font-bold tracking-tight text-primary-900">
+            <div className="text-base font-extrabold tracking-tight text-slate-900">
               InsureAgent
             </div>
             {isSyncing && (
-              <div className="animate-pulse text-xs text-primary-600">
+              <div className="animate-pulse text-xs font-medium text-primary-600">
                 Syncing...
               </div>
             )}
           </div>
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-primary-200 bg-primary-100 text-xs font-bold text-primary-800"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700"
             title={agent?.name ?? 'Agent'}
           >
             {getInitials(agent?.name)}
@@ -154,9 +154,9 @@ export default function AppLayout() {
         </header>
 
         {/* Desktop top bar */}
-        <header className="sticky top-0 z-20 hidden h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-8 backdrop-blur lg:flex">
+        <header className="sticky top-0 z-20 hidden h-16 items-center justify-between border-b border-slate-200/70 bg-white/75 px-8 backdrop-blur-md lg:flex">
           <div>
-            <h1 className="text-lg font-black tracking-tight text-slate-950">
+            <h1 className="text-lg font-bold tracking-tight text-slate-900">
               {pageTitle}
             </h1>
           </div>
@@ -167,7 +167,7 @@ export default function AppLayout() {
               </span>
             )}
             <span
-              className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
                 isOnline
                   ? 'bg-emerald-50 text-emerald-700'
                   : 'bg-amber-50 text-amber-700'
@@ -179,7 +179,7 @@ export default function AppLayout() {
         </header>
 
         {!isOnline && (
-          <div className="border-b border-warning-500 bg-warning-50 px-4 py-2 text-center text-xs text-warning-700 sm:px-6 lg:px-8">
+          <div className="border-b border-warning-500/40 bg-warning-50 px-4 py-2 text-center text-xs font-medium text-warning-700 sm:px-6 lg:px-8">
             You're offline. Changes will sync when you reconnect.
           </div>
         )}
@@ -191,18 +191,18 @@ export default function AppLayout() {
         {/* Mobile FAB */}
         <Link
           to="/clients/add"
-          className="fixed bottom-20 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-800 text-3xl font-light text-white shadow-lg transition-transform active:scale-95 lg:hidden"
+          className="fixed bottom-20 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600 text-3xl font-light text-white shadow-panel transition-transform active:scale-95 lg:hidden"
           aria-label="Add client"
         >
           +
         </Link>
 
         {/* Mobile bottom nav */}
-        <nav className="safe-bottom fixed bottom-0 left-0 right-0 z-10 flex border-t border-slate-200 bg-white lg:hidden">
+        <nav className="safe-bottom fixed bottom-0 left-0 right-0 z-10 flex border-t border-slate-200/80 bg-white/95 backdrop-blur-md lg:hidden">
           {MOBILE_NAV.map(({ to, short, icon }) => (
             <NavLink key={to} to={to} className={mobileNavClass}>
               <span className="text-lg leading-none">{icon}</span>
-              <span className="text-xs font-semibold uppercase tracking-wider">
+              <span className="text-[10px] font-semibold uppercase tracking-wider">
                 {short}
               </span>
             </NavLink>

@@ -9,7 +9,7 @@
   }
 
   body {
-    @apply bg-slate-100 text-gray-900 font-sans;
+    @apply bg-canvas text-slate-900 font-sans antialiased;
   }
 
   input[type="date"],
@@ -24,8 +24,6 @@
     @apply text-base; /* prevents iOS zoom on focus */
   }
 
-  /* Keep form controls at text-base on all breakpoints for readability */
-
   /* Prevent mouse-wheel from changing focused number / range values */
   input[type='number'],
   input[type='range'] {
@@ -36,6 +34,24 @@
   input[type='number']::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
+  }
+}
+
+@layer components {
+  .app-canvas {
+    @apply relative min-h-screen bg-canvas bg-app-atmosphere;
+  }
+
+  .surface-panel {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-card;
+  }
+
+  .surface-table {
+    @apply overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card;
+  }
+
+  .table-head {
+    @apply border-b border-slate-200/80 bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500;
   }
 }
 

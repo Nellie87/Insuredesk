@@ -8,13 +8,9 @@ import { INSURER_OPTIONS } from '../constants/insurers'
 import { CAR_MAKE_OPTIONS, getCarModelOptions } from '../constants/carMakes'
 import {
   INPUT,
-  LABEL,
-  SECTION_TITLE,
-  EYEBROW,
   BTN_PRIMARY,
   BTN_SECONDARY,
 } from '../constants/formStyles'
-import PageShell from '../components/layout/PageShell'
 
 const POLICY_TYPES = [
   { value: 'comprehensive', label: 'Comprehensive' },
@@ -29,12 +25,12 @@ const USE_TYPES = [
 ]
 
 const STEPS = [
-  { id: 'insured', title: 'Insured', caption: 'Client details' },
-  { id: 'vehicle', title: 'Vehicle', caption: 'Identification' },
-  { id: 'cover', title: 'Cover', caption: 'Policy cover' },
-  { id: 'dates', title: 'Dates', caption: 'Policy period' },
-  { id: 'payment', title: 'Payment', caption: 'Installments' },
-  { id: 'review', title: 'Review', caption: 'Confirm & save' },
+  { id: 'insured', title: 'Insured', caption: 'Enter the insured person’s details. You can add vehicle and cover information in the next steps.' },
+  { id: 'vehicle', title: 'Vehicle', caption: 'Identify the vehicle with registration or chassis, then add make, model, and use.' },
+  { id: 'cover', title: 'Cover', caption: 'Set the insurer, policy type, sum insured, and total premium for this cover.' },
+  { id: 'dates', title: 'Dates', caption: 'Confirm the policy start and expiry dates for this cover period.' },
+  { id: 'payment', title: 'Payment', caption: 'Choose how many installments and adjust amounts or due dates if needed.' },
+  { id: 'review', title: 'Review', caption: 'Check everything looks right, then save the client and policy.' },
 ]
 
 const DEFAULT_INSTALLMENT_OPTIONS = [1, 2, 3]
@@ -84,11 +80,11 @@ const INITIAL_FORM = {
 function Field({ label, required, hint, children, className = '' }) {
   return (
     <div className={className}>
-      <label className={LABEL}>
+      <label className="text-sm font-medium text-slate-600">
         {label}
-        {required && <span className="ml-0.5 text-red-600">*</span>}
+        {required && <span className="text-slate-400">*</span>}
       </label>
-      {hint && <p className="mt-0.5 text-sm text-slate-500">{hint}</p>}
+      {hint && <p className="mt-0.5 text-sm text-slate-400">{hint}</p>}
       <div className="mt-1.5">{children}</div>
     </div>
   )
@@ -96,12 +92,11 @@ function Field({ label, required, hint, children, className = '' }) {
 
 function StepHeader({ step }) {
   return (
-    <div>
-      <p className={EYEBROW}>
-        Step {step + 1} of {STEPS.length}
-      </p>
-      <h2 className={`mt-1 ${SECTION_TITLE}`}>{STEPS[step].title} details</h2>
-      <p className="mt-1 text-sm text-slate-500 sm:text-base">
+    <div className="mx-auto w-full max-w-4xl text-left sm:text-center">
+      <h2 className="text-xl font-bold tracking-tight text-slate-800 sm:text-2xl">
+        {STEPS[step].title}
+      </h2>
+      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500 sm:mx-auto">
         {STEPS[step].caption}
       </p>
     </div>
@@ -109,63 +104,46 @@ function StepHeader({ step }) {
 }
 
 function StepProgress({ current }) {
-  const percent = Math.round(((current + 1) / STEPS.length) * 100)
-
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-600">
-          Step {current + 1} of {STEPS.length}
-        </p>
-        <p className="text-sm font-bold text-primary-800">{percent}% complete</p>
-      </div>
+    <ol className="flex gap-1 overflow-x-auto rounded-2xl bg-slate-100/80 p-1 hide-scrollbar">
+      {STEPS.map((step, index) => {
+        const active = index === current
+        const done = index < current
 
-      <div
-        className="h-2.5 overflow-hidden rounded-full bg-slate-200"
-        role="progressbar"
-        aria-label="Onboarding progress"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={percent}
-      >
-        <div
-          className="h-full rounded-full bg-primary-700 transition-all duration-300"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-
-      <ol className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {STEPS.map((step, index) => {
-          const active = index === current
-          const done = index < current
-
-          return (
-            <li
-              key={step.id}
-              className={`rounded-xl border px-2.5 py-2.5 ${
+        return (
+          <li key={step.id} className="min-w-[7.25rem] flex-1 sm:min-w-0">
+            <div
+              className={`flex h-full items-center justify-center gap-2 rounded-xl px-2.5 py-3 transition-all sm:px-3 ${
                 active
-                  ? 'border-primary-300 bg-primary-50'
+                  ? 'bg-step-active text-white shadow-soft'
                   : done
-                    ? 'border-emerald-200 bg-emerald-50'
-                    : 'border-slate-200 bg-white'
+                    ? 'bg-white text-primary-700 shadow-soft'
+                    : 'text-slate-400'
               }`}
             >
-              <p
-                className={`text-xs font-bold uppercase tracking-[0.08em] ${
+              <span
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                   active
-                    ? 'text-primary-700'
+                    ? 'bg-white/20 text-white'
                     : done
-                      ? 'text-emerald-700'
-                      : 'text-slate-400'
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'bg-slate-200/80 text-slate-500'
                 }`}
               >
-                {index + 1}. {step.title}
-              </p>
-            </li>
-          )
-        })}
-      </ol>
-    </div>
+                {done ? '✓' : index + 1}
+              </span>
+              <span
+                className={`truncate text-xs font-semibold sm:text-[13px] ${
+                  active ? 'text-white' : done ? 'text-primary-700' : 'text-slate-400'
+                }`}
+              >
+                {step.title}
+              </span>
+            </div>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
@@ -421,127 +399,122 @@ export default function AddClientPage() {
     form.policy_type
 
   return (
-    <PageShell narrow>
-      <div>
+    <div className="flex min-h-full flex-col bg-white lg:min-h-[calc(100vh-4rem)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 lg:px-8">
         <Link
           to="/clients"
-          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-bold text-primary-700 shadow-sm transition hover:border-primary-200 hover:bg-primary-50"
+          className="inline-flex items-center text-sm font-semibold text-primary-600 transition hover:text-primary-700"
         >
           ← Back to portfolio
         </Link>
-      </div>
-
-      <div>
-        <p className={EYEBROW}>New policy</p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-          Add client
-        </h1>
-        <p className="mt-1.5 text-base text-slate-500">
-          Guided onboarding — insured, vehicle, cover, dates, and payment plan.
-          Fields marked <span className="text-red-600">*</span> are required.
+        <p className="text-sm font-medium text-slate-400">
+          Step {step + 1} of {STEPS.length}
         </p>
       </div>
 
-      <StepProgress current={step} />
+      <div className="border-b border-slate-100 px-4 py-3 sm:px-6 lg:px-8">
+        <StepProgress current={step} />
+      </div>
 
-      {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-base text-red-700">
-          {error}
-        </div>
-      )}
-
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+      <div className="flex flex-1 flex-col space-y-5 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <StepHeader step={step} />
 
-        {step === 0 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Insured name" required>
-              <input
-                autoFocus
-                placeholder="Full name"
-                value={form.name}
-                onChange={e => set('name', e.target.value)}
-                className={INPUT}
-              />
-            </Field>
-            <Field label="Phone" required>
-              <input
-                placeholder="Phone number"
-                value={form.phone}
-                onChange={e => set('phone', e.target.value)}
-                className={INPUT}
-              />
-            </Field>
-            <Field label="National ID">
-              <input
-                placeholder="ID number"
-                value={form.id_number}
-                onChange={e => set('id_number', e.target.value)}
-                className={INPUT}
-              />
-            </Field>
-            <Field label="Email">
-              <input
-                type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={e => set('email', e.target.value)}
-                className={INPUT}
-              />
-            </Field>
-            <Field label="Address" className="sm:col-span-2">
-              <input
-                placeholder="Address"
-                value={form.address}
-                onChange={e => set('address', e.target.value)}
-                className={INPUT}
-              />
-            </Field>
-            <Field
-              label="General client notes"
-              hint="Internal remarks about the client"
-              className="sm:col-span-2"
-            >
-              <textarea
-                rows={3}
-                placeholder="General notes…"
-                value={form.notes}
-                onChange={e => set('notes', e.target.value)}
-                className={INPUT}
-              />
-            </Field>
+        {error && (
+          <div className="mx-auto w-full max-w-4xl rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+            {error}
           </div>
         )}
 
-        {step === 1 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field
-              label="Registration number"
-              hint="Optional if chassis is provided"
-            >
-              <input
-                autoFocus
-                placeholder="e.g. KDA 123A"
-                value={form.registration}
-                onChange={e => set('registration', e.target.value)}
-                className={INPUT}
-              />
-            </Field>
-            <Field
-              label="Chassis number"
-              hint="Optional if registration is provided"
-            >
-              <input
-                placeholder="Chassis / VIN"
-                value={form.chassis}
-                onChange={e => set('chassis', e.target.value)}
-                className={INPUT}
-              />
-            </Field>
-            <p className="sm:col-span-2 text-sm text-slate-500">
-              At least one of registration or chassis is required
-              <span className="ml-0.5 text-red-600">*</span>
-            </p>
+        <div className="mx-auto w-full max-w-4xl flex-1">
+            {step === 0 && (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-5">
+                <Field label="Insured name" required>
+                  <input
+                    autoFocus
+                    placeholder="Full name"
+                    value={form.name}
+                    onChange={e => set('name', e.target.value)}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Phone" required>
+                  <input
+                    placeholder="Phone number"
+                    value={form.phone}
+                    onChange={e => set('phone', e.target.value)}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="National ID">
+                  <input
+                    placeholder="ID number"
+                    value={form.id_number}
+                    onChange={e => set('id_number', e.target.value)}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Email">
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    value={form.email}
+                    onChange={e => set('email', e.target.value)}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Address" className="sm:col-span-2">
+                  <input
+                    placeholder="Address"
+                    value={form.address}
+                    onChange={e => set('address', e.target.value)}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field
+                  label="General client notes"
+                  hint="Internal remarks about the client"
+                  className="sm:col-span-2"
+                >
+                  <textarea
+                    rows={3}
+                    placeholder="General notes…"
+                    value={form.notes}
+                    onChange={e => set('notes', e.target.value)}
+                    className={INPUT}
+                  />
+                </Field>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-5">
+                <Field
+                  label="Registration number"
+                  hint="Optional if chassis is provided"
+                >
+                  <input
+                    autoFocus
+                    placeholder="e.g. KDA 123A"
+                    value={form.registration}
+                    onChange={e => set('registration', e.target.value)}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field
+                  label="Chassis number"
+                  hint="Optional if registration is provided"
+                >
+                  <input
+                    placeholder="Chassis / VIN"
+                    value={form.chassis}
+                    onChange={e => set('chassis', e.target.value)}
+                    className={INPUT}
+                  />
+                </Field>
+                <p className="sm:col-span-2 text-sm text-slate-500">
+                  At least one of registration or chassis is required
+                  <span className="text-slate-400">*</span>
+                </p>
 
             <Field label="Make of car">
               <select
@@ -659,7 +632,7 @@ export default function AddClientPage() {
         )}
 
         {step === 2 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-5">
             <Field label="Cover type" className="sm:col-span-2">
               <select
                 value={form.policy_type}
@@ -737,7 +710,7 @@ export default function AddClientPage() {
         )}
 
         {step === 3 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-5">
             <Field
               label="Policy start date"
               required
@@ -777,7 +750,7 @@ export default function AddClientPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                   Total premium
                 </p>
-                <p className="mt-1.5 text-lg font-black text-slate-950 sm:text-xl">
+                <p className="mt-1.5 text-lg font-bold text-slate-950 sm:text-xl">
                   {formatKSh(premiumNumber)}
                 </p>
               </div>
@@ -785,7 +758,7 @@ export default function AddClientPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                   Installments
                 </p>
-                <p className="mt-1.5 text-lg font-black text-slate-950 sm:text-xl">
+                <p className="mt-1.5 text-lg font-bold text-slate-950 sm:text-xl">
                   {form.installment_count}
                 </p>
               </div>
@@ -793,7 +766,7 @@ export default function AddClientPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                   Per installment
                 </p>
-                <p className="mt-1.5 text-lg font-black text-slate-950 sm:text-xl">
+                <p className="mt-1.5 text-lg font-bold text-slate-950 sm:text-xl">
                   {formatKSh(
                     draftSchedule?.installments?.[0]?.amount ??
                       (premiumNumber / Math.max(form.installment_count, 1)),
@@ -804,7 +777,7 @@ export default function AddClientPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                   First due
                 </p>
-                <p className="mt-1.5 text-lg font-black text-slate-950 sm:text-xl">
+                <p className="mt-1.5 text-lg font-bold text-slate-950 sm:text-xl">
                   {form.start_date || '—'}
                 </p>
               </div>
@@ -960,8 +933,9 @@ export default function AddClientPage() {
             )}
           </div>
         )}
+        </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-between">
+        <div className="mx-auto flex w-full max-w-4xl flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={goBack}
@@ -972,7 +946,11 @@ export default function AddClientPage() {
           </button>
 
           {step < STEPS.length - 1 ? (
-            <button type="button" onClick={goNext} className={BTN_PRIMARY}>
+            <button
+              type="button"
+              onClick={goNext}
+              className={`${BTN_PRIMARY} sm:min-w-[9rem]`}
+            >
               Continue
             </button>
           ) : (
@@ -980,13 +958,13 @@ export default function AddClientPage() {
               type="button"
               onClick={handleSubmit}
               disabled={saving}
-              className={BTN_PRIMARY}
+              className={`${BTN_PRIMARY} sm:min-w-[9rem]`}
             >
-              {saving ? 'Saving…' : 'Confirm & save client'}
+              {saving ? 'Saving…' : 'Confirm & save'}
             </button>
           )}
         </div>
       </div>
-    </PageShell>
+    </div>
   )
 }

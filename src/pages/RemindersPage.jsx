@@ -115,10 +115,10 @@ export default function RemindersPage() {
     <PageShell>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 lg:hidden">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
             Schedule
           </p>
-          <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
             Calendar
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -147,7 +147,7 @@ export default function RemindersPage() {
             onClick={() => setView(v)}
             className={`flex-1 rounded-xl border py-2 text-xs font-bold ${
               view === v
-                ? 'border-primary-800 bg-primary-800 text-white'
+                ? 'border-primary-600 bg-primary-600 text-white'
                 : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
             }`}
           >
@@ -164,7 +164,7 @@ export default function RemindersPage() {
             onClick={() => setFilter(f.value)}
             className={`whitespace-nowrap rounded-full border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
               filter === f.value
-                ? 'border-primary-800 bg-primary-800 text-white'
+                ? 'border-primary-600 bg-primary-600 text-white'
                 : 'border-slate-200 bg-white text-slate-500'
             }`}
           >
@@ -173,7 +173,7 @@ export default function RemindersPage() {
         ))}
       </div>
 
-      <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card">
+      <div className="space-y-2 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-card">
         <div className="text-sm font-bold text-slate-900">Google Calendar</div>
         <p className="text-xs text-slate-500">
           Export all events as a file and import into Google Calendar, or add

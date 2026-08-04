@@ -27,7 +27,7 @@ export default function MonthCalendar({
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd })
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
         <button
           type="button"
@@ -37,7 +37,7 @@ export default function MonthCalendar({
         >
           ‹
         </button>
-        <div className="text-sm font-black tracking-tight text-slate-950">
+        <div className="text-sm font-bold tracking-tight text-slate-900">
           {format(month, 'MMMM yyyy')}
         </div>
         <button

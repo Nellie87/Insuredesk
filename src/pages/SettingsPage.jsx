@@ -5,12 +5,7 @@ import { toast } from '../store/toastStore'
 import { signOut, updateAgentProfile } from '../lib/supabase'
 import { format } from 'date-fns'
 import PageShell from '../components/layout/PageShell'
-
-const INPUT =
-  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
-
-const LABEL =
-  'text-xs font-bold uppercase tracking-[0.1em] text-slate-500'
+import { INPUT_SPACED as INPUT, LABEL, BTN_PRIMARY } from '../constants/formStyles'
 
 const QUICK_LINKS = [
   { to: '/calculator', label: 'Premium calculator' },
@@ -89,10 +84,10 @@ export default function SettingsPage() {
   return (
     <PageShell narrow>
       <div className="lg:hidden">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
           Account
         </p>
-        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+        <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
           Settings
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -117,7 +112,7 @@ export default function SettingsPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+        <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
           <h2 className="text-sm font-bold text-slate-900">Agent profile</h2>
 
           <form onSubmit={handleSave} className="space-y-3">
@@ -158,7 +153,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={saving || !agent}
-              className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50"
+              className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save profile'}
             </button>
@@ -166,7 +161,7 @@ export default function SettingsPage() {
         </section>
 
         <div className="space-y-4">
-          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+          <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
             <h2 className="text-sm font-bold text-slate-900">Commission rates</h2>
             {rates.length === 0 ? (
               <p className="text-sm text-slate-400">
@@ -187,7 +182,7 @@ export default function SettingsPage() {
             )}
           </section>
 
-          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+          <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
             <h2 className="text-sm font-bold text-slate-900">Data & sync</h2>
             <div className="space-y-1 text-xs text-slate-500">
               <p>Status: {isOnline ? 'Online' : 'Offline'}</p>
@@ -209,7 +204,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card lg:hidden">
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card lg:hidden">
         <h2 className="px-4 pb-2 pt-4 text-sm font-bold text-slate-900">
           Quick links
         </h2>

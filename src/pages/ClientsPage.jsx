@@ -52,27 +52,30 @@ export default function ClientsPage() {
 
   return (
     <PageShell>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="lg:hidden">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary-600 lg:hidden">
             Clients
           </p>
-          <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900 lg:hidden">
             Portfolio
           </h1>
+          <p className="mt-1 hidden text-sm text-slate-500 lg:block">
+            Search and manage insured clients and policies.
+          </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
+        <div className="flex shrink-0 items-center gap-2">
           <Link
             to="/clients/import"
-            className="rounded-xl border border-primary-200 px-3 py-1.5 text-sm font-semibold text-primary-800 transition hover:bg-primary-50"
+            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-soft transition hover:border-primary-200 hover:bg-primary-50"
           >
             Import
           </Link>
           <Link
             to="/clients/add"
-            className="rounded-xl bg-primary-800 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-primary-700"
+            className="rounded-xl bg-primary-600 px-3.5 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700"
           >
-            + Add
+            + Add client
           </Link>
         </div>
       </div>
@@ -80,8 +83,7 @@ export default function ClientsPage() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="min-w-0 flex-1">
           <SearchField
-            label="Search clients"
-            placeholder="Search clients or policies..."
+            placeholder="Search by name, phone, or plate..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -94,10 +96,10 @@ export default function ClientsPage() {
             key={f}
             type="button"
             onClick={() => setFilter(f)}
-            className={`whitespace-nowrap rounded-full border px-3 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${
+            className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors ${
               filter === f
-                ? 'border-primary-800 bg-primary-800 text-white'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                ? 'bg-primary-600 text-white shadow-soft'
+                : 'border border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'
             }`}
           >
             {FILTER_LABELS[f]}
@@ -108,7 +110,7 @@ export default function ClientsPage() {
       {loading ? (
         <LottieLoader label="Loading clients..." />
       ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-400">
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/80 py-14 text-center text-sm text-slate-400">
           {search
             ? 'No clients found for that search.'
             : 'No clients yet. Tap + to add your first one.'}
@@ -128,11 +130,11 @@ export default function ClientsPage() {
                 <Link
                   key={client.id}
                   to={`/clients/${client.id}`}
-                  className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-card transition-transform active:scale-[0.99]"
+                  className="block rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card transition-transform active:scale-[0.99]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="break-words text-sm font-bold text-slate-900">
+                      <div className="break-words text-sm font-semibold text-slate-900">
                         {client.name}
                       </div>
                       <div className="mt-0.5 break-words text-xs text-slate-500">
@@ -141,14 +143,14 @@ export default function ClientsPage() {
                           : client.phone}
                       </div>
                       {vehicle && (
-                        <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        <div className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-400">
                           Plate {vehicle.registration}
                         </div>
                       )}
                     </div>
                     <div className="shrink-0 text-right">
                       {vehicle && !schedule && (
-                        <div className="break-words text-sm font-black text-primary-900">
+                        <div className="break-words text-sm font-bold text-primary-800">
                           {formatKSh(vehicle.premium)}
                         </div>
                       )}
@@ -166,26 +168,26 @@ export default function ClientsPage() {
                   {schedule && (
                     <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
                       <div className="min-w-0">
-                        <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                           To pay
                         </div>
-                        <div className="mt-0.5 break-words text-sm font-bold text-slate-900">
+                        <div className="mt-0.5 break-words text-sm font-semibold text-slate-900">
                           {formatKSh(schedule.total_premium ?? vehicle.premium)}
                         </div>
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                           Paid
                         </div>
-                        <div className="mt-0.5 break-words text-sm font-bold text-success-700">
+                        <div className="mt-0.5 break-words text-sm font-semibold text-success-700">
                           {formatKSh(amountPaid)}
                         </div>
                       </div>
                       <div className="min-w-0 text-right">
-                        <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                           Balance
                         </div>
-                        <div className="mt-0.5 break-words text-sm font-bold text-amber-700">
+                        <div className="mt-0.5 break-words text-sm font-semibold text-amber-700">
                           {formatKSh(outstanding)}
                         </div>
                       </div>
@@ -197,16 +199,16 @@ export default function ClientsPage() {
           </div>
 
           {/* Desktop table */}
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card lg:block">
+          <div className="surface-table hidden lg:block">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-400">
+              <thead className="table-head">
                 <tr>
-                  <th className="px-4 py-3">Client</th>
-                  <th className="px-4 py-3">Vehicle</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Premium</th>
-                  <th className="px-4 py-3 text-right">Paid</th>
-                  <th className="px-4 py-3 text-right">Balance</th>
+                  <th className="px-5 py-3.5">Name</th>
+                  <th className="px-5 py-3.5">Vehicle</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5 text-right">Premium</th>
+                  <th className="px-5 py-3.5 text-right">Paid</th>
+                  <th className="px-5 py-3.5 text-right">Balance</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -222,12 +224,12 @@ export default function ClientsPage() {
                   return (
                     <tr
                       key={client.id}
-                      className="transition hover:bg-slate-50"
+                      className="transition hover:bg-primary-50/40"
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-3.5">
                         <Link
                           to={`/clients/${client.id}`}
-                          className="font-bold text-slate-900 hover:text-primary-800"
+                          className="font-semibold text-slate-900 hover:text-primary-600"
                         >
                           {client.name}
                         </Link>
@@ -235,14 +237,14 @@ export default function ClientsPage() {
                           {client.phone}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="px-5 py-3.5 text-slate-600">
                         {vehicle ? (
                           <>
                             <div>
                               {vehicle.year ? `${vehicle.year} ` : ''}
                               {vehicle.make} {vehicle.model}
                             </div>
-                            <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            <div className="mt-0.5 text-xs font-medium uppercase tracking-wide text-slate-400">
                               {vehicle.registration}
                             </div>
                           </>
@@ -250,18 +252,18 @@ export default function ClientsPage() {
                           '—'
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-3.5">
                         <StatusBadge status={client.status} />
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                      <td className="px-5 py-3.5 text-right font-semibold text-slate-900">
                         {formatKSh(
                           schedule?.total_premium ?? vehicle?.premium ?? 0,
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-success-700">
+                      <td className="px-5 py-3.5 text-right font-semibold text-success-700">
                         {schedule ? formatKSh(amountPaid) : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-amber-700">
+                      <td className="px-5 py-3.5 text-right font-semibold text-amber-700">
                         {schedule ? formatKSh(outstanding) : '—'}
                       </td>
                     </tr>

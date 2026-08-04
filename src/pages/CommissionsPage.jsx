@@ -4,10 +4,10 @@ export default function CommissionsPage() {
   return (
     <PageShell>
       <div className="lg:hidden">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
           Earnings
         </p>
-        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+        <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
           Commissions
         </h1>
         <p className="mt-1 text-sm text-slate-500">

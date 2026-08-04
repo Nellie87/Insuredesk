@@ -2,12 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { signIn, signUp } from '../lib/supabase'
 import { useAppStore } from '../store/appStore'
-
-const INPUT =
-  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
-
-const LABEL =
-  'text-xs font-bold uppercase tracking-[0.1em] text-slate-500'
+import { INPUT, LABEL, BTN_PRIMARY } from '../constants/formStyles'
 
 export default function LoginPage() {
   const { session, authLoading } = useAppStore()
@@ -80,110 +75,106 @@ export default function LoginPage() {
   const isSignUp = mode === 'signup'
 
   return (
-    <div className="flex min-h-screen">
-      {/* Brand panel — desktop */}
-      <div className="relative hidden w-[45%] flex-col justify-between overflow-hidden bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 p-10 text-white lg:flex xl:w-1/2">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.12),_transparent_55%)]" />
-        <div className="relative">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-sm font-black backdrop-blur">
-            IA
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas bg-login-atmosphere px-4 py-10">
+      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-primary-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-primary-300/30 blur-3xl" />
+
+      <div className="relative w-full max-w-lg overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/95 shadow-panel backdrop-blur-sm">
+        <div className="border-b border-slate-100 px-6 pb-5 pt-7 sm:px-8">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-step-active text-sm font-extrabold text-white shadow-soft">
+              IA
+            </div>
+            <div>
+              <div className="text-base font-extrabold tracking-tight text-slate-900">
+                InsureAgent
+              </div>
+              <div className="text-xs font-medium text-slate-400">
+                Agent workspace
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100/80 p-1">
+            <button
+              type="button"
+              onClick={() => switchMode('signin')}
+              className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                !isSignUp
+                  ? 'bg-step-active text-white shadow-soft'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('signup')}
+              className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                isSignUp
+                  ? 'bg-step-active text-white shadow-soft'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Create account
+            </button>
           </div>
         </div>
-        <div className="relative max-w-md">
-          <h1 className="text-4xl font-black tracking-tight xl:text-5xl">
-            InsureAgent
-          </h1>
-          <p className="mt-4 text-lg leading-relaxed text-primary-100">
-            Manage clients, policies, payments, and renewals from one workspace
-            — on desktop or on the go.
+
+        <div className="px-6 py-6 sm:px-8 sm:py-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary-600">
+            {isSignUp ? 'Step 1' : 'Welcome back'}
           </p>
-          <ul className="mt-8 space-y-3 text-sm text-primary-200">
-            <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Offline-ready portfolio sync
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Payment tracking & reminders
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Premium calculator & prospects
-            </li>
-          </ul>
-        </div>
-        <p className="relative text-xs text-primary-300">
-          Built for insurance agents in the field.
-        </p>
-      </div>
-
-      {/* Form panel */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 p-6 lg:bg-slate-50 lg:bg-none">
-        <div className="mb-8 text-center lg:hidden">
-          <div className="text-3xl font-black tracking-tight text-white">
-            InsureAgent
-          </div>
-          <div className="mt-1 text-sm text-primary-200">
-            Your insurance management system
-          </div>
-        </div>
-
-        <div className="w-full max-w-md space-y-4 rounded-2xl border border-white/10 bg-white p-6 shadow-xl lg:border-slate-200 lg:p-8 lg:shadow-card">
-          <div className="hidden lg:block">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
-              Welcome
-            </p>
-            <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
-              {isSignUp ? 'Create account' : 'Sign in'}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {isSignUp
-                ? 'Set up your agent workspace in a minute.'
-                : 'Sign in to your agent workspace.'}
-            </p>
-          </div>
-
-          <h2 className="text-lg font-black tracking-tight text-slate-950 lg:hidden">
-            {isSignUp ? 'Create account' : 'Sign in'}
-          </h2>
+          <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900">
+            {isSignUp ? 'Your profile' : 'Sign in'}
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">
+            {isSignUp
+              ? 'Enter the login information for your account. You can manage clients and policies right away.'
+              : 'Sign in to manage clients, policies, payments, and renewals.'}
+          </p>
 
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
               {error}
             </div>
           )}
 
           {info && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
               {info}
             </div>
           )}
 
           <form
             onSubmit={isSignUp ? handleSignUp : handleSignIn}
-            className="space-y-3"
+            className="mt-5 space-y-4"
           >
             {isSignUp && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={LABEL}>Full name</label>
+                  <label className={LABEL}>
+                    Full name <span className="text-primary-500">*</span>
+                  </label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    className={INPUT}
+                    className={`mt-1.5 ${INPUT}`}
                     placeholder="Jane Agent"
                   />
                 </div>
                 <div>
-                  <label className={LABEL}>Phone</label>
+                  <label className={LABEL}>
+                    Phone <span className="text-primary-500">*</span>
+                  </label>
                   <input
                     type="tel"
                     required
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
-                    className={INPUT}
+                    className={`mt-1.5 ${INPUT}`}
                     placeholder="0700000000"
                   />
                 </div>
@@ -191,26 +182,30 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className={LABEL}>Email</label>
+              <label className={LABEL}>
+                Email <span className="text-primary-500">*</span>
+              </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className={INPUT}
+                className={`mt-1.5 ${INPUT}`}
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label className={LABEL}>Password</label>
+              <label className={LABEL}>
+                Password <span className="text-primary-500">*</span>
+              </label>
               <input
                 type="password"
                 required
                 minLength={6}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className={INPUT}
+                className={`mt-1.5 ${INPUT}`}
                 placeholder="••••••••"
               />
             </div>
@@ -218,7 +213,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50"
+              className={`mt-2 w-full ${BTN_PRIMARY}`}
             >
               {loading
                 ? isSignUp
@@ -229,32 +224,6 @@ export default function LoginPage() {
                   : 'Sign in'}
             </button>
           </form>
-
-          <p className="text-center text-sm text-slate-500">
-            {isSignUp ? (
-              <>
-                Already have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => switchMode('signin')}
-                  className="font-bold text-primary-700"
-                >
-                  Sign in
-                </button>
-              </>
-            ) : (
-              <>
-                Don&apos;t have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => switchMode('signup')}
-                  className="font-bold text-primary-700"
-                >
-                  Sign up
-                </button>
-              </>
-            )}
-          </p>
         </div>
       </div>
     </div>

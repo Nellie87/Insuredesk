@@ -8,11 +8,7 @@ import { formatNumberInput, parseNumberInput } from '../utils/numberInput'
 import { toast } from '../store/toastStore'
 import LottieLoader from '../components/ui/LottieLoader'
 import PageShell from '../components/layout/PageShell'
-
-const INPUT =
-  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
-
-const LABEL = 'text-xs font-bold uppercase tracking-[0.1em] text-slate-500'
+import { INPUT, LABEL, BTN_PRIMARY } from '../constants/formStyles'
 
 const METHODS = [
   { value: 'mpesa', label: 'M-Pesa' },
@@ -103,10 +99,10 @@ export default function PaymentsPage() {
     <PageShell>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 lg:hidden">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
             Transactions
           </p>
-          <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
             Payments
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -119,7 +115,7 @@ export default function PaymentsPage() {
         <button
           type="button"
           onClick={() => setShowForm(prev => !prev)}
-          className="ml-auto shrink-0 rounded-xl bg-primary-800 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-primary-700"
+          className="ml-auto shrink-0 rounded-xl bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-primary-700"
         >
           {showForm ? 'Close' : '+ Log'}
         </button>
@@ -130,15 +126,15 @@ export default function PaymentsPage() {
           <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
             This month
           </p>
-          <p className="mt-2 break-words text-base font-black text-blue-800 sm:text-xl">
+          <p className="mt-2 break-words text-base font-bold text-blue-800 sm:text-xl">
             {formatKSh(monthTotal)}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card sm:p-4">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-card sm:p-4">
           <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
             Total logged
           </p>
-          <p className="mt-2 text-base font-black text-slate-950 sm:text-xl">
+          <p className="mt-2 text-base font-bold text-slate-950 sm:text-xl">
             {payments.length}
           </p>
         </div>
@@ -154,7 +150,7 @@ export default function PaymentsPage() {
         {showForm && (
           <form
             onSubmit={handleSubmit}
-            className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card xl:col-span-2 sm:p-5"
+            className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card xl:col-span-2 sm:p-5"
           >
             <h2 className="text-sm font-bold text-slate-900">Log payment</h2>
 
@@ -265,7 +261,7 @@ export default function PaymentsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50"
+              className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save payment'}
             </button>
@@ -294,7 +290,7 @@ export default function PaymentsPage() {
                     <Link
                       key={payment.id}
                       to={`/clients/${payment.client_id}`}
-                      className="block rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card"
+                      className="block rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-card"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -310,7 +306,7 @@ export default function PaymentsPage() {
                             {format(parseISO(payment.date), 'd MMM yyyy')}
                           </div>
                         </div>
-                        <div className="shrink-0 text-sm font-black text-emerald-700">
+                        <div className="shrink-0 text-sm font-bold text-emerald-700">
                           {formatKSh(payment.amount)}
                         </div>
                       </div>
@@ -320,27 +316,27 @@ export default function PaymentsPage() {
               </div>
 
               {/* Desktop table */}
-              <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card lg:block">
+              <div className="surface-table hidden lg:block">
                 <table className="w-full text-left text-sm">
-                  <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <thead className="table-head">
                     <tr>
-                      <th className="px-4 py-3">Client</th>
-                      <th className="px-4 py-3">Vehicle</th>
-                      <th className="px-4 py-3">Method</th>
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3 text-right">Amount</th>
+                      <th className="px-5 py-3.5">Client</th>
+                      <th className="px-5 py-3.5">Vehicle</th>
+                      <th className="px-5 py-3.5">Method</th>
+                      <th className="px-5 py-3.5">Date</th>
+                      <th className="px-5 py-3.5 text-right">Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {payments.map(payment => (
                       <tr
                         key={payment.id}
-                        className="transition hover:bg-slate-50"
+                        className="transition hover:bg-primary-50/40"
                       >
-                        <td className="px-4 py-3">
+                        <td className="px-5 py-3.5">
                           <Link
                             to={`/clients/${payment.client_id}`}
-                            className="font-bold text-slate-900 hover:text-primary-800"
+                            className="font-semibold text-slate-900 hover:text-primary-600"
                           >
                             {payment.clients?.name ?? 'Client'}
                           </Link>
@@ -350,16 +346,16 @@ export default function PaymentsPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">
+                        <td className="px-5 py-3.5 text-slate-600">
                           {payment.vehicles?.registration ?? '—'}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">
+                        <td className="px-5 py-3.5 text-slate-600">
                           {METHOD_LABELS[payment.method] ?? payment.method}
                         </td>
-                        <td className="px-4 py-3 text-slate-500">
+                        <td className="px-5 py-3.5 text-slate-500">
                           {format(parseISO(payment.date), 'd MMM yyyy')}
                         </td>
-                        <td className="px-4 py-3 text-right font-black text-emerald-700">
+                        <td className="px-5 py-3.5 text-right font-semibold text-emerald-700">
                           {formatKSh(payment.amount)}
                         </td>
                       </tr>

@@ -29,10 +29,15 @@ function ProtectedRoute({ children }) {
 
 function SplashScreen() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary-900">
-      <div className="text-center text-white">
-        <div className="text-3xl font-bold mb-2">InsureAgent</div>
-        <div className="text-primary-200 text-sm">Loading...</div>
+    <div className="flex min-h-screen items-center justify-center bg-canvas bg-login-atmosphere">
+      <div className="text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-step-active text-sm font-extrabold text-white shadow-soft">
+          IA
+        </div>
+        <div className="mb-1 text-2xl font-extrabold tracking-tight text-slate-900">
+          InsureAgent
+        </div>
+        <div className="text-sm font-medium text-slate-500">Loading...</div>
       </div>
     </div>
   )

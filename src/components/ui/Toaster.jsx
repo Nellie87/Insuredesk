@@ -1,8 +1,8 @@
 import { useToastStore } from '../../store/toastStore'
 
 const STYLES = {
-  success: 'bg-primary-900 text-white',
-  error: 'bg-red-700 text-white',
+  success: 'bg-primary-700 text-white',
+  error: 'bg-red-600 text-white',
   info: 'bg-slate-800 text-white',
 }
 
@@ -22,7 +22,7 @@ export default function Toaster() {
           key={item.id}
           type="button"
           onClick={() => dismissToast(item.id)}
-          className={`pointer-events-auto w-full rounded-2xl px-4 py-3 text-left text-sm font-medium shadow-lg ${
+          className={`pointer-events-auto w-full rounded-xl px-4 py-3 text-left text-sm font-medium shadow-panel ${
             STYLES[item.type] ?? STYLES.info
           }`}
         >

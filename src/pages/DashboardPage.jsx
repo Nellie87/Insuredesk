@@ -75,10 +75,10 @@ export default function DashboardPage() {
   return (
     <PageShell>
       <div className="lg:hidden">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary-600">
           Overview
         </p>
-        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+        <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
           Dashboard
         </h1>
       </div>
@@ -89,8 +89,8 @@ export default function DashboardPage() {
           value={formatKSh(stats.totalPremium)}
           accent="navy"
           badge={
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-              ↑ {stats.totalClients}
+            <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+              {stats.totalClients} clients
             </span>
           }
         />
@@ -112,31 +112,29 @@ export default function DashboardPage() {
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
-          Quick actions
-        </p>
+        <p className="mb-2.5 text-sm font-medium text-slate-600">Quick actions</p>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           <Link
             to="/clients/add"
-            className="rounded-2xl bg-primary-800 p-3 text-center text-sm font-bold text-white shadow-card transition hover:bg-primary-700"
+            className="rounded-2xl bg-primary-600 p-3.5 text-center text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700"
           >
             + Add client
           </Link>
           <Link
             to="/calculator"
-            className="rounded-2xl border border-slate-200 bg-white p-3 text-center text-sm font-semibold text-slate-700 shadow-card transition hover:border-primary-200 hover:bg-primary-50"
+            className="rounded-2xl border border-slate-200/80 bg-white p-3.5 text-center text-sm font-semibold text-slate-700 shadow-card transition hover:border-primary-200 hover:bg-primary-50"
           >
             Calculator
           </Link>
           <Link
             to="/prospects"
-            className="rounded-2xl border border-slate-200 bg-white p-3 text-center text-sm font-semibold text-slate-700 shadow-card transition hover:border-primary-200 hover:bg-primary-50"
+            className="rounded-2xl border border-slate-200/80 bg-white p-3.5 text-center text-sm font-semibold text-slate-700 shadow-card transition hover:border-primary-200 hover:bg-primary-50"
           >
             Prospects
           </Link>
           <Link
             to="/payments"
-            className="rounded-2xl border border-slate-200 bg-white p-3 text-center text-sm font-semibold text-slate-700 shadow-card transition hover:border-primary-200 hover:bg-primary-50"
+            className="rounded-2xl border border-slate-200/80 bg-white p-3.5 text-center text-sm font-semibold text-slate-700 shadow-card transition hover:border-primary-200 hover:bg-primary-50"
           >
             Log payment
           </Link>
@@ -146,19 +144,19 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {stats.overdueClients.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+            <h2 className="text-sm font-semibold text-slate-700">
               Overdue payments
             </h2>
-            <div className="space-y-2.5">
+            <div className="surface-table divide-y divide-slate-100">
               {stats.overdueClients.map(({ client, vehicle, installment }) => (
                 <Link
                   key={vehicle.id}
                   to={`/clients/${client.id}`}
-                  className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-card transition hover:border-primary-200 hover:shadow-md"
+                  className="block px-4 py-3.5 transition hover:bg-primary-50/50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="break-words text-sm font-bold text-slate-900">
+                      <div className="break-words text-sm font-semibold text-slate-900">
                         {client.name}
                       </div>
                       <div className="mt-0.5 break-words text-xs text-slate-500">
@@ -166,7 +164,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
-                      <div className="text-sm font-black text-danger-700">
+                      <div className="text-sm font-bold text-danger-700">
                         {installment ? formatKSh(installment.amount) : '—'}
                       </div>
                       <div className="mt-1 flex justify-end">
@@ -182,19 +180,19 @@ export default function DashboardPage() {
 
         {stats.expiringVehicles.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+            <h2 className="text-sm font-semibold text-slate-700">
               Policies expiring soon
             </h2>
-            <div className="space-y-2.5">
+            <div className="surface-table divide-y divide-slate-100">
               {stats.expiringVehicles.map(({ client, vehicle, daysLeft }) => (
                 <Link
                   key={vehicle.id}
                   to={`/clients/${client.id}`}
-                  className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-card transition hover:border-primary-200 hover:shadow-md"
+                  className="block px-4 py-3.5 transition hover:bg-primary-50/50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="break-words text-sm font-bold text-slate-900">
+                      <div className="break-words text-sm font-semibold text-slate-900">
                         {client.name}
                       </div>
                       <div className="mt-0.5 text-xs text-slate-500">
