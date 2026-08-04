@@ -23,7 +23,7 @@ const LABELS = {
 export default function StatusBadge({ status }) {
   return (
     <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+      className={`rounded-full border px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${
         STYLES[status] ?? 'border-slate-200 bg-slate-100 text-slate-500'
       }`}
     >

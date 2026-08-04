@@ -2,7 +2,7 @@ export default function SearchField({ label, placeholder, value, onChange }) {
   return (
     <div>
       {label && (
-        <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+        <div className="mb-2 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
           {label}
         </div>
       )}

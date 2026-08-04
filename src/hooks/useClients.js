@@ -26,14 +26,18 @@ export function useClients() {
 
   const persistScheduleUpdate = useCallback(async schedule => {
     await localPut('payment_schedules', schedule)
+    const cloudPayload = {
+      installments: schedule.installments,
+      installment_count: schedule.installment_count,
+      total_premium: schedule.total_premium,
+      down_payment: schedule.down_payment,
+      down_payment_paid: schedule.down_payment_paid,
+      down_payment_paid_at: schedule.down_payment_paid_at,
+    }
     if (isOnline) {
       const { error: err } = await supabase
         .from('payment_schedules')
-        .update({
-          installments: schedule.installments,
-          down_payment_paid: schedule.down_payment_paid,
-          down_payment_paid_at: schedule.down_payment_paid_at,
-        })
+        .update(cloudPayload)
         .eq('id', schedule.id)
       if (err) {
         await addToSyncQueue({
@@ -243,6 +247,7 @@ export function useClients() {
       client_id: clientId,
       agent_id: agentId,
       registration: vehicle.registration.trim().toUpperCase(),
+      chassis: vehicle.chassis?.trim().toUpperCase() || null,
       make: vehicle.make.trim(),
       model: vehicle.model.trim(),
       year: vehicle.year ? Number(vehicle.year) : null,
@@ -256,6 +261,9 @@ export function useClients() {
       expiry_date: vehicle.expiry_date,
       sum_insured: Number(vehicle.sum_insured || 0),
       premium: Number(vehicle.premium),
+      vehicle_notes: vehicle.vehicle_notes?.trim() || null,
+      cover_notes: vehicle.cover_notes?.trim() || null,
+      payment_notes: vehicle.payment_notes?.trim() || null,
       created_at: now,
     }
 
@@ -375,6 +383,84 @@ export function useClients() {
     return nextVehicle
   }, [isOnline])
 
+  // ─── Update / replace a payment schedule ────────────────────────────────────
+  const updatePaymentSchedule = useCallback(async (scheduleId, updates) => {
+    let nextSchedule = null
+    let parentClient = null
+
+    setClients(prev =>
+      prev.map(client => {
+        let changed = false
+        const vehicles = (client.vehicles ?? []).map(vehicle => {
+          const schedules = getVehicleSchedules(vehicle)
+          const index = schedules.findIndex(s => s.id === scheduleId)
+          if (index < 0) return vehicle
+
+          nextSchedule = { ...schedules[index], ...updates }
+          const nextSchedules = schedules.slice()
+          nextSchedules[index] = nextSchedule
+          changed = true
+          return { ...vehicle, payment_schedules: nextSchedules }
+        })
+
+        if (!changed) return client
+        parentClient = { ...client, vehicles }
+        return parentClient
+      })
+    )
+
+    if (!nextSchedule) {
+      const existing = await localGet('payment_schedules', scheduleId)
+      if (!existing) throw new Error('Payment schedule not found')
+      nextSchedule = { ...existing, ...updates }
+    }
+
+    await persistScheduleUpdate(nextSchedule)
+    if (parentClient) await localPut('clients', parentClient)
+
+    return nextSchedule
+  }, [persistScheduleUpdate])
+
+  // ─── Create a payment schedule for a vehicle that has none ──────────────────
+  const createPaymentSchedule = useCallback(async (vehicleId, scheduleData) => {
+    const now = new Date().toISOString()
+    const newSchedule = {
+      id: crypto.randomUUID(),
+      vehicle_id: vehicleId,
+      agent_id: agentId,
+      total_premium: Number(scheduleData.total_premium || 0),
+      down_payment: Number(scheduleData.down_payment || 0),
+      down_payment_paid: Boolean(scheduleData.down_payment_paid),
+      down_payment_paid_at: scheduleData.down_payment_paid_at || null,
+      installment_count: scheduleData.installments?.length || 0,
+      installments: scheduleData.installments || [],
+      created_at: now,
+    }
+
+    let parentClient = null
+    setClients(prev =>
+      prev.map(client => {
+        const vehicles = client.vehicles ?? []
+        const index = vehicles.findIndex(v => v.id === vehicleId)
+        if (index < 0) return client
+
+        const nextVehicles = vehicles.slice()
+        nextVehicles[index] = {
+          ...vehicles[index],
+          payment_schedules: [newSchedule],
+        }
+        parentClient = { ...client, vehicles: nextVehicles }
+        return parentClient
+      })
+    )
+
+    await localPut('payment_schedules', newSchedule)
+    if (parentClient) await localPut('clients', parentClient)
+    await persistRecord('payment_schedules', newSchedule)
+
+    return newSchedule
+  }, [agentId, persistRecord])
+
   const importClientsBatch = useCallback(async rows => {
     const imported = []
     const failures = []
@@ -404,5 +490,7 @@ export function useClients() {
     importClientsBatch,
     updateClient,
     updateVehicle,
+    updatePaymentSchedule,
+    createPaymentSchedule,
   }
 }

@@ -27,7 +27,8 @@ export interface Client {
   id_number: string
   email?: string
   address?: string
-  notes?: string // Comment / free-text remarks from agent sheet
+  /** General client notes (internal) */
+  notes?: string
   status: ClientStatus
   created_at: string
   updated_at: string
@@ -44,6 +45,8 @@ export interface Vehicle {
   id: string
   client_id: string
   registration: string
+  /** Chassis / VIN — required if registration is empty */
+  chassis?: string | null
   make: string
   model: string
   year: number
@@ -57,9 +60,13 @@ export interface Vehicle {
   expiry_date: string  // ISO date string
   sum_insured: number
   premium: number
+  vehicle_notes?: string | null
+  cover_notes?: string | null
+  payment_notes?: string | null
   created_at: string
   // Joined
   payment_schedule?: PaymentSchedule
+  payment_schedules?: PaymentSchedule[]
 }
 
 // ─── Payment Schedule ─────────────────────────────────────────────────────────

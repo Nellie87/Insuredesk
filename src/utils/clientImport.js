@@ -8,6 +8,7 @@ const COLUMN_ALIASES = {
   email: ['email', 'e-mail', 'email address'],
   address: ['address', 'location', 'area'],
   registration: ['registration', 'reg no', 'regno', 'number plate', 'plate'],
+  chassis: ['chassis', 'chassis number', 'chassis no', 'vin', 'frame number'],
   make: ['make', 'vehicle make', 'car make'],
   model: ['model', 'vehicle model', 'car model'],
   year: ['year', 'vehicle year', 'yom', 'year of manufacture'],
@@ -200,6 +201,7 @@ function parseRow(row, headerMap, rowNumber) {
   const comment = String(get('comment') ?? '').trim()
 
   let registration = String(get('registration') ?? '').trim()
+  const chassis = String(get('chassis') ?? '').trim()
   let make = String(get('make') ?? '').trim()
   let model = String(get('model') ?? '').trim()
   let insurer = String(get('insurer') ?? '').trim()
@@ -211,10 +213,14 @@ function parseRow(row, headerMap, rowNumber) {
     (headerMap.name != null && headerMap.premium != null && headerMap.registration == null)
 
   if (isRenewalsSheet) {
-    if (!registration) registration = `PENDING-${rowNumber}`
+    if (!registration && !chassis) registration = `PENDING-${rowNumber}`
     if (!make) make = 'Unknown'
     if (!model) model = 'Unknown'
     if (!insurer) insurer = 'Unknown'
+  }
+
+  if (!registration && chassis) {
+    registration = `PENDING-${rowNumber}`
   }
 
   const premiumRaw = get('premium')
@@ -249,7 +255,9 @@ function parseRow(row, headerMap, rowNumber) {
   const errors = []
   if (!name) errors.push('Insured / Name is required')
   if (!phone) errors.push('Contacts / Phone is required')
-  if (!registration) errors.push('Registration is required')
+  if (!registration && !chassis) {
+    errors.push('Registration or chassis number is required')
+  }
   if (!make) errors.push('Make is required')
   if (!model) errors.push('Model is required')
   if (!insurer) errors.push('Insurer is required')
@@ -274,6 +282,7 @@ function parseRow(row, headerMap, rowNumber) {
       },
       vehicle: {
         registration,
+        chassis: chassis || null,
         make,
         model,
         year: get('year') ? String(get('year')).trim() : '',

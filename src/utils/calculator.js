@@ -223,6 +223,75 @@ export function hasOverduePayment(schedule) {
 }
 
 /**
+ * Builds an equal installment schedule from policy start date.
+ * Due dates are monthly from the start date (installment 1 = start date).
+ * Amounts and due dates can be overridden via `overrides`.
+ *
+ * @param {{
+ *   premium: number,
+ *   installmentCount: number,
+ *   startDate: string,
+ *   overrides?: Array<{ amount?: number|string|null, due_date?: string|null, paid?: boolean, paid_at?: string|null, paid_amount?: number|null }>,
+ *   maxInstallments?: number,
+ * }} input
+ * @returns {Omit<import('../types').PaymentSchedule, 'id'|'vehicle_id'|'created_at'> | null}
+ */
+export function buildInstallmentSchedule({
+  premium,
+  installmentCount,
+  startDate,
+  overrides = [],
+  maxInstallments = 5,
+}) {
+  const totalPremium = Number(premium)
+  if (!startDate || !Number.isFinite(totalPremium) || totalPremium <= 0) return null
+
+  const count = Math.min(
+    Math.max(Math.round(Number(installmentCount) || 1), 1),
+    maxInstallments,
+  )
+  const baseDate = new Date(`${startDate}T12:00:00`)
+  if (Number.isNaN(baseDate.getTime())) return null
+
+  const baseAmount = round2(totalPremium / count)
+  const installments = []
+
+  for (let i = 0; i < count; i++) {
+    const override = overrides[i] ?? {}
+    const isLast = i === count - 1
+    const defaultAmount = isLast
+      ? round2(totalPremium - baseAmount * (count - 1))
+      : baseAmount
+
+    const rawAmount = override.amount
+    const amount =
+      rawAmount === '' || rawAmount == null
+        ? defaultAmount
+        : Number(rawAmount)
+
+    installments.push({
+      number: i + 1,
+      amount: Number.isFinite(amount) ? round2(amount) : defaultAmount,
+      due_date:
+        override.due_date ||
+        format(addMonths(baseDate, i), 'yyyy-MM-dd'),
+      paid: Boolean(override.paid),
+      paid_at: override.paid_at ?? null,
+      paid_amount: override.paid_amount ?? null,
+    })
+  }
+
+  return {
+    total_premium: totalPremium,
+    down_payment: 0,
+    down_payment_paid: false,
+    down_payment_paid_at: null,
+    installment_count: installments.length,
+    installments,
+  }
+}
+
+/**
  * Builds a payment schedule from agent Preliminary renewals fields
  * (Renewal 1–4 dates, Payment 1–4 amounts, Total Premium, Bal.).
  *

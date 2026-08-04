@@ -6,6 +6,7 @@ import {
   parseClientSpreadsheet,
 } from '../utils/clientImport'
 import { toast } from '../store/toastStore'
+import PageShell from '../components/layout/PageShell'
 
 export default function ImportClientsPage() {
   const navigate = useNavigate()
@@ -81,18 +82,18 @@ export default function ImportClientsPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 pb-8">
+    <PageShell narrow>
       <div>
         <Link
           to="/clients"
-          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-bold text-primary-700 shadow-sm"
+          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-bold text-primary-700 shadow-sm transition hover:border-primary-200 hover:bg-primary-50"
         >
           ← Back to portfolio
         </Link>
       </div>
 
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+      <div className="lg:hidden">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
           Bulk upload
         </p>
         <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
@@ -104,6 +105,12 @@ export default function ImportClientsPage() {
           the sheet does not include them.
         </p>
       </div>
+
+      <p className="hidden text-sm text-slate-500 lg:block">
+        Upload the agent&apos;s Preliminary renewals sheet. Each row becomes one
+        client. Vehicle plate / make / insurer can be filled in later if the
+        sheet does not include them.
+      </p>
 
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
         <div className="flex flex-wrap gap-2">
@@ -228,6 +235,6 @@ export default function ImportClientsPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

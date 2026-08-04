@@ -18,8 +18,24 @@
   input[type="email"],
   input[type="password"],
   input[type="text"],
-  input[type="tel"] {
+  input[type="tel"],
+  select,
+  textarea {
     @apply text-base; /* prevents iOS zoom on focus */
+  }
+
+  /* Keep form controls at text-base on all breakpoints for readability */
+
+  /* Prevent mouse-wheel from changing focused number / range values */
+  input[type='number'],
+  input[type='range'] {
+    -moz-appearance: textfield;
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 }
 

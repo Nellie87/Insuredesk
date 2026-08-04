@@ -54,7 +54,7 @@ export default function MonthCalendar({
         {WEEKDAYS.map(day => (
           <div
             key={day}
-            className="py-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-400"
+            className="py-2 text-center text-xs font-bold uppercase tracking-wide text-slate-400"
           >
             {day}
           </div>

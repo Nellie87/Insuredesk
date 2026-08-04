@@ -12,6 +12,7 @@ import MonthCalendar, {
 } from '../components/calendar/MonthCalendar'
 import CalendarEventCard from '../components/calendar/CalendarEventCard'
 import LottieLoader from '../components/ui/LottieLoader'
+import PageShell from '../components/layout/PageShell'
 
 const FILTERS = [
   { value: 'all', label: 'All' },
@@ -111,10 +112,10 @@ export default function RemindersPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 pb-8">
+    <PageShell>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+        <div className="min-w-0 lg:hidden">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
             Schedule
           </p>
           <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
@@ -124,10 +125,13 @@ export default function RemindersPage() {
             Payments, renewals, and follow-ups at a glance.
           </p>
         </div>
+        <p className="hidden text-sm text-slate-500 lg:block">
+          Payments, renewals, and follow-ups at a glance.
+        </p>
         <button
           type="button"
           onClick={handleToday}
-          className="shrink-0 rounded-xl border border-primary-100 bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary-700"
+          className="ml-auto shrink-0 rounded-xl border border-primary-100 bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary-700 transition hover:bg-primary-100"
         >
           Today
         </button>
@@ -135,7 +139,7 @@ export default function RemindersPage() {
 
       <CalendarLegend />
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 sm:max-w-xs">
         {['month', 'agenda'].map(v => (
           <button
             key={v}
@@ -144,7 +148,7 @@ export default function RemindersPage() {
             className={`flex-1 rounded-xl border py-2 text-xs font-bold ${
               view === v
                 ? 'border-primary-800 bg-primary-800 text-white'
-                : 'border-slate-200 bg-white text-slate-600'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
             }`}
           >
             {v === 'month' ? 'Month' : 'Agenda'}
@@ -158,7 +162,7 @@ export default function RemindersPage() {
             key={f.value}
             type="button"
             onClick={() => setFilter(f.value)}
-            className={`whitespace-nowrap rounded-full border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${
+            className={`whitespace-nowrap rounded-full border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
               filter === f.value
                 ? 'border-primary-800 bg-primary-800 text-white'
                 : 'border-slate-200 bg-white text-slate-500'
@@ -195,17 +199,19 @@ export default function RemindersPage() {
       </div>
 
       {view === 'month' ? (
-        <>
-          <MonthCalendar
-            month={month}
-            onMonthChange={setMonth}
-            eventsByDate={eventsByDate}
-            selectedDate={selectedDate}
-            onSelectDate={handleSelectDate}
-          />
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+          <div className="xl:col-span-3">
+            <MonthCalendar
+              month={month}
+              onMonthChange={setMonth}
+              eventsByDate={eventsByDate}
+              selectedDate={selectedDate}
+              onSelectDate={handleSelectDate}
+            />
+          </div>
 
-          <section className="space-y-2.5">
-            <h2 className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+          <section className="space-y-2.5 xl:col-span-2">
+            <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
               {format(parseISO(selectedDate), 'EEEE, d MMMM yyyy')}
             </h2>
             {selectedDayEvents.length === 0 ? (
@@ -222,16 +228,16 @@ export default function RemindersPage() {
               ))
             )}
           </section>
-        </>
+        </div>
       ) : filteredGroups.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-400">
           Nothing scheduled for this filter.
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {filteredGroups.map(group => (
             <section key={group.date}>
-              <h2 className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+              <h2 className="mb-2 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                 {group.label}
               </h2>
               <div className="space-y-2.5">
@@ -247,6 +253,6 @@ export default function RemindersPage() {
           ))}
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

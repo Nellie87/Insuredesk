@@ -4,11 +4,12 @@ import { formatKSh } from '../utils/calculator'
 import { formatNumberInput, parseNumberInput } from '../utils/numberInput'
 import { toast } from '../store/toastStore'
 import { INSURER_OPTIONS } from '../constants/insurers'
+import PageShell from '../components/layout/PageShell'
 
 const INPUT =
-  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
+  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
 
-const LABEL = 'text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400'
+const LABEL = 'text-xs font-bold uppercase tracking-[0.1em] text-slate-500'
 
 const STAGES = [
   { value: 'lead', label: 'Lead' },
@@ -120,10 +121,10 @@ export default function ProspectsPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 pb-8">
+    <PageShell>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+        <div className="min-w-0 lg:hidden">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
             Pipeline
           </p>
           <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
@@ -133,31 +134,34 @@ export default function ProspectsPage() {
             Track leads, quotes, follow-ups and conversions.
           </p>
         </div>
+        <p className="hidden text-sm text-slate-500 lg:block">
+          Track leads, quotes, follow-ups and conversions.
+        </p>
 
         <button
           type="button"
           onClick={() => setShowForm(prev => !prev)}
-          className="shrink-0 rounded-xl bg-primary-800 px-3 py-1.5 text-sm font-semibold text-white"
+          className="ml-auto shrink-0 rounded-xl bg-primary-800 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-primary-700"
         >
           {showForm ? 'Close' : '+ Add'}
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
-        <div className="rounded-2xl border border-blue-100 bg-white p-3.5 shadow-card">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+        <div className="rounded-2xl border border-blue-100 bg-white p-3.5 shadow-card sm:p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
             Total prospects
           </p>
-          <p className="mt-2 text-base font-black text-blue-800">
+          <p className="mt-2 text-base font-black text-blue-800 sm:text-xl">
             {prospects.length}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-emerald-100 bg-white p-3.5 shadow-card">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+        <div className="rounded-2xl border border-emerald-100 bg-white p-3.5 shadow-card sm:p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
             Converted
           </p>
-          <p className="mt-2 text-base font-black text-emerald-700">
+          <p className="mt-2 text-base font-black text-emerald-700 sm:text-xl">
             {prospects.filter(p => p.stage === 'converted').length}
           </p>
         </div>
@@ -167,7 +171,7 @@ export default function ProspectsPage() {
         <button
           type="button"
           onClick={() => setStageFilter('all')}
-          className={`whitespace-nowrap rounded-full border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${
+          className={`whitespace-nowrap rounded-full border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
             stageFilter === 'all'
               ? 'border-primary-800 bg-primary-800 text-white'
               : 'border-slate-200 bg-white text-slate-500'
@@ -181,7 +185,7 @@ export default function ProspectsPage() {
             key={stage.value}
             type="button"
             onClick={() => setStageFilter(stage.value)}
-            className={`whitespace-nowrap rounded-full border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${
+            className={`whitespace-nowrap rounded-full border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
               stageFilter === stage.value
                 ? 'border-primary-800 bg-primary-800 text-white'
                 : 'border-slate-200 bg-white text-slate-500'
@@ -203,104 +207,108 @@ export default function ProspectsPage() {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card"
+          className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5"
         >
           <h2 className="text-sm font-bold text-slate-900">Add new prospect</h2>
 
-          <div>
-            <label className={LABEL}>
-              Full name <span className="normal-case text-red-600">*</span>
-            </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={LABEL}>
+                Full name <span className="normal-case text-red-600">*</span>
+              </label>
+              <input
+                required
+                placeholder="Full name"
+                value={form.full_name}
+                onChange={e => set('full_name', e.target.value)}
+                className={`mt-1.5 ${INPUT}`}
+              />
+            </div>
+
+            <div>
+              <label className={LABEL}>
+                Phone number <span className="normal-case text-red-600">*</span>
+              </label>
+              <input
+                required
+                placeholder="Phone number"
+                value={form.phone}
+                onChange={e => set('phone', e.target.value)}
+                className={`mt-1.5 ${INPUT}`}
+              />
+            </div>
+
             <input
-              required
-              placeholder="Full name"
-              value={form.full_name}
-              onChange={e => set('full_name', e.target.value)}
-              className={`mt-1.5 ${INPUT}`}
+              type="email"
+              placeholder="Email optional"
+              value={form.email}
+              onChange={e => set('email', e.target.value)}
+              className={INPUT}
             />
-          </div>
 
-          <div>
-            <label className={LABEL}>
-              Phone number <span className="normal-case text-red-600">*</span>
-            </label>
             <input
-              required
-              placeholder="Phone number"
-              value={form.phone}
-              onChange={e => set('phone', e.target.value)}
-              className={`mt-1.5 ${INPUT}`}
+              placeholder="Vehicle details e.g. KDA 123A Toyota Axio"
+              value={form.vehicle_details}
+              onChange={e => set('vehicle_details', e.target.value)}
+              className={INPUT}
             />
-          </div>
 
-          <input
-            type="email"
-            placeholder="Email optional"
-            value={form.email}
-            onChange={e => set('email', e.target.value)}
-            className={INPUT}
-          />
-
-          <input
-            placeholder="Vehicle details e.g. KDA 123A Toyota Axio"
-            value={form.vehicle_details}
-            onChange={e => set('vehicle_details', e.target.value)}
-            className={INPUT}
-          />
-
-          <input
-            placeholder="Product interest e.g. Comprehensive"
-            value={form.product_interest}
-            onChange={e => set('product_interest', e.target.value)}
-            className={INPUT}
-          />
-
-          <div>
-            <label className={LABEL}>Estimated premium</label>
             <input
-              type="text"
-              inputMode="decimal"
-              placeholder="e.g. 36,000"
-              value={form.estimated_premium}
-              onChange={e =>
-                set('estimated_premium', formatNumberInput(e.target.value))
-              }
-              className={`mt-1.5 ${INPUT}`}
+              placeholder="Product interest e.g. Comprehensive"
+              value={form.product_interest}
+              onChange={e => set('product_interest', e.target.value)}
+              className={INPUT}
             />
+
+            <div>
+              <label className={LABEL}>Estimated premium</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="e.g. 36,000"
+                value={form.estimated_premium}
+                onChange={e =>
+                  set('estimated_premium', formatNumberInput(e.target.value))
+                }
+                className={`mt-1.5 ${INPUT}`}
+              />
+            </div>
+
+            <select
+              value={form.preferred_insurer}
+              onChange={e => set('preferred_insurer', e.target.value)}
+              className={INPUT}
+            >
+              {INSURER_OPTIONS.map(option => (
+                <option key={option.value || 'empty'} value={option.value}>
+                  {option.value ? option.label : 'Preferred insurer (optional)'}
+                </option>
+              ))}
+            </select>
+
+            <div>
+              <label className={LABEL}>Follow-up date</label>
+              <input
+                type="date"
+                value={form.follow_up_date}
+                onChange={e => set('follow_up_date', e.target.value)}
+                className={`mt-1.5 ${INPUT}`}
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <textarea
+                placeholder="Notes"
+                value={form.notes}
+                onChange={e => set('notes', e.target.value)}
+                className={`${INPUT} min-h-20`}
+              />
+            </div>
           </div>
-
-          <select
-            value={form.preferred_insurer}
-            onChange={e => set('preferred_insurer', e.target.value)}
-            className={INPUT}
-          >
-            {INSURER_OPTIONS.map(option => (
-              <option key={option.value || 'empty'} value={option.value}>
-                {option.value ? option.label : 'Preferred insurer (optional)'}
-              </option>
-            ))}
-          </select>
-
-          <div>
-            <label className={LABEL}>Follow-up date</label>
-            <input
-              type="date"
-              value={form.follow_up_date}
-              onChange={e => set('follow_up_date', e.target.value)}
-              className={`mt-1.5 ${INPUT}`}
-            />
-          </div>
-
-          <textarea
-            placeholder="Notes"
-            value={form.notes}
-            onChange={e => set('notes', e.target.value)}
-            className={`${INPUT} min-h-20`}
-          />
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white"
+            className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white transition hover:bg-primary-700 sm:max-w-xs"
           >
             Save prospect
           </button>
@@ -316,11 +324,11 @@ export default function ProspectsPage() {
           No prospects found.
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map(prospect => (
             <div
               key={prospect.id}
-              className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card"
+              className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card sm:p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -340,7 +348,7 @@ export default function ProspectsPage() {
                 </div>
 
                 <span
-                  className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                  className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${
                     STAGE_COLORS[prospect.stage] ??
                     'border-slate-200 bg-slate-100 text-slate-500'
                   }`}
@@ -351,7 +359,7 @@ export default function ProspectsPage() {
 
               <div className="mt-3 grid grid-cols-2 gap-2.5">
                 <div className="rounded-xl border border-slate-100 bg-slate-50 p-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                  <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
                     Product
                   </div>
                   <div className="mt-1 break-words text-xs font-semibold text-slate-800">
@@ -360,7 +368,7 @@ export default function ProspectsPage() {
                 </div>
 
                 <div className="rounded-xl border border-slate-100 bg-slate-50 p-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                  <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
                     Premium
                   </div>
                   <div className="mt-1 break-words text-xs font-semibold text-slate-800">
@@ -403,6 +411,6 @@ export default function ProspectsPage() {
           ))}
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

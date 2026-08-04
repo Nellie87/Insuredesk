@@ -25,13 +25,13 @@ export default function CalendarEventCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`text-[10px] font-bold uppercase tracking-wide ${colors.text}`}
+              className={`text-xs font-bold uppercase tracking-wide ${colors.text}`}
             >
               {colors.label}
             </span>
             {!compact && (
               <span
-                className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
+                className={`rounded-full border px-2 py-0.5 text-xs font-bold uppercase ${
                   STATUS_STYLES[event.status] ?? STATUS_STYLES.upcoming
                 }`}
               >

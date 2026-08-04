@@ -4,12 +4,13 @@ import { useAppStore } from '../store/appStore'
 import { toast } from '../store/toastStore'
 import { signOut, updateAgentProfile } from '../lib/supabase'
 import { format } from 'date-fns'
+import PageShell from '../components/layout/PageShell'
 
 const INPUT =
-  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
+  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base text-slate-800 placeholder:text-slate-400 focus:border-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500'
 
 const LABEL =
-  'text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400'
+  'text-xs font-bold uppercase tracking-[0.1em] text-slate-500'
 
 const QUICK_LINKS = [
   { to: '/calculator', label: 'Premium calculator' },
@@ -86,9 +87,9 @@ export default function SettingsPage() {
     : []
 
   return (
-    <div className="space-y-4 p-4 pb-8">
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-700">
+    <PageShell narrow>
+      <div className="lg:hidden">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
           Account
         </p>
         <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">
@@ -98,6 +99,10 @@ export default function SettingsPage() {
           Your agent profile and app preferences.
         </p>
       </div>
+
+      <p className="hidden text-sm text-slate-500 lg:block">
+        Your agent profile and app preferences.
+      </p>
 
       {message && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -111,96 +116,100 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        <h2 className="text-sm font-bold text-slate-900">Agent profile</h2>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+          <h2 className="text-sm font-bold text-slate-900">Agent profile</h2>
 
-        <form onSubmit={handleSave} className="space-y-3">
-          <div>
-            <label className={LABEL}>
-              Full name <span className="normal-case text-red-600">*</span>
-            </label>
-            <input
-              required
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className={INPUT}
-            />
-          </div>
+          <form onSubmit={handleSave} className="space-y-3">
+            <div>
+              <label className={LABEL}>
+                Full name <span className="normal-case text-red-600">*</span>
+              </label>
+              <input
+                required
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className={INPUT}
+              />
+            </div>
 
-          <div>
-            <label className={LABEL}>
-              Phone <span className="normal-case text-red-600">*</span>
-            </label>
-            <input
-              required
-              type="tel"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              className={INPUT}
-            />
-          </div>
+            <div>
+              <label className={LABEL}>
+                Phone <span className="normal-case text-red-600">*</span>
+              </label>
+              <input
+                required
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                className={INPUT}
+              />
+            </div>
 
-          <div>
-            <label className={LABEL}>Email</label>
-            <input
-              readOnly
-              value={session?.user?.email ?? agent?.email ?? ''}
-              className={`${INPUT} bg-slate-50 text-slate-500`}
-            />
-          </div>
+            <div>
+              <label className={LABEL}>Email</label>
+              <input
+                readOnly
+                value={session?.user?.email ?? agent?.email ?? ''}
+                className={`${INPUT} bg-slate-50 text-slate-500`}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={saving || !agent}
-            className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : 'Save profile'}
-          </button>
-        </form>
-      </section>
+            <button
+              type="submit"
+              disabled={saving || !agent}
+              className="w-full rounded-xl bg-primary-800 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save profile'}
+            </button>
+          </form>
+        </section>
 
-      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        <h2 className="text-sm font-bold text-slate-900">Commission rates</h2>
-        {rates.length === 0 ? (
-          <p className="text-sm text-slate-400">
-            No commission rates configured yet.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {rates.map((rate, i) => (
-              <div
-                key={i}
-                className="flex justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
-              >
-                <span className="text-slate-700">{rate.insurer}</span>
-                <span className="font-bold text-slate-900">{rate.rate}%</span>
+        <div className="space-y-4">
+          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+            <h2 className="text-sm font-bold text-slate-900">Commission rates</h2>
+            {rates.length === 0 ? (
+              <p className="text-sm text-slate-400">
+                No commission rates configured yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {rates.map((rate, i) => (
+                  <div
+                    key={i}
+                    className="flex justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
+                  >
+                    <span className="text-slate-700">{rate.insurer}</span>
+                    <span className="font-bold text-slate-900">{rate.rate}%</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            )}
+          </section>
 
-      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        <h2 className="text-sm font-bold text-slate-900">Data & sync</h2>
-        <div className="space-y-1 text-xs text-slate-500">
-          <p>Status: {isOnline ? 'Online' : 'Offline'}</p>
-          {lastSyncAt && (
-            <p>
-              Last sync: {format(new Date(lastSyncAt), 'd MMM yyyy, HH:mm')}
-            </p>
-          )}
+          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+            <h2 className="text-sm font-bold text-slate-900">Data & sync</h2>
+            <div className="space-y-1 text-xs text-slate-500">
+              <p>Status: {isOnline ? 'Online' : 'Offline'}</p>
+              {lastSyncAt && (
+                <p>
+                  Last sync: {format(new Date(lastSyncAt), 'd MMM yyyy, HH:mm')}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleSync}
+              disabled={isSyncing || !isOnline}
+              className="w-full rounded-xl border border-primary-200 py-2.5 text-sm font-bold text-primary-800 transition hover:bg-primary-50 disabled:opacity-50"
+            >
+              {isSyncing ? 'Syncing...' : 'Sync now'}
+            </button>
+          </section>
         </div>
-        <button
-          type="button"
-          onClick={handleSync}
-          disabled={isSyncing || !isOnline}
-          className="w-full rounded-xl border border-primary-200 py-2.5 text-sm font-bold text-primary-800 disabled:opacity-50"
-        >
-          {isSyncing ? 'Syncing...' : 'Sync now'}
-        </button>
-      </section>
+      </div>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card lg:hidden">
         <h2 className="px-4 pb-2 pt-4 text-sm font-bold text-slate-900">
           Quick links
         </h2>
@@ -218,10 +227,10 @@ export default function SettingsPage() {
       <button
         type="button"
         onClick={handleSignOut}
-        className="w-full rounded-xl border border-danger-200 bg-white py-3 text-sm font-bold text-danger-700"
+        className="w-full rounded-xl border border-danger-200 bg-white py-3 text-sm font-bold text-danger-700 transition hover:bg-danger-50 sm:max-w-xs"
       >
         Sign out
       </button>
-    </div>
+    </PageShell>
   )
 }
