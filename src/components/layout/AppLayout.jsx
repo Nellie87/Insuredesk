@@ -137,7 +137,7 @@ export default function AppLayout() {
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200/70 bg-white/80 px-4 py-3 backdrop-blur-md lg:hidden">
           <div className="min-w-0">
             <div className="text-base font-extrabold tracking-tight text-slate-900">
-              InsureAgent
+              {pageTitle}
             </div>
             {isSyncing && (
               <div className="animate-pulse text-xs font-medium text-primary-600">
