@@ -104,6 +104,58 @@ export function sumPayments(payments) {
 }
 
 /**
+ * Collected / outstanding for a vehicle using schedule credit and logged payments.
+ * Logged payments always count — even when no payment schedule exists yet.
+ *
+ * @param {object} vehicle
+ * @param {import('../types').Payment[]} [payments]
+ * @returns {{
+ *   schedule: import('../types').PaymentSchedule | null,
+ *   totalPremium: number,
+ *   amountPaid: number,
+ *   outstanding: number,
+ *   overpayment: number,
+ *   fullyPaid: boolean,
+ *   paymentsTotal: number,
+ *   schedulePaid: number,
+ * }}
+ */
+export function getVehicleCollectionSummary(vehicle, payments = []) {
+  const schedule = getVehicleSchedules(vehicle)[0] ?? null
+  const totalPremium = round2(
+    Number(
+      schedule
+        ? schedule.total_premium ?? vehicle?.premium
+        : vehicle?.premium
+    ) || 0
+  )
+
+  const related = (payments ?? []).filter(
+    payment =>
+      payment.vehicle_id === vehicle?.id ||
+      (schedule && payment.schedule_id === schedule.id)
+  )
+  const paymentsTotal = sumPayments(related)
+  const schedulePaid = schedule ? getAmountPaid(schedule) : 0
+  const amountPaid = round2(Math.max(schedulePaid, paymentsTotal))
+  const outstanding = Math.max(0, round2(totalPremium - amountPaid))
+  const overpayment =
+    totalPremium > 0 ? Math.max(0, round2(amountPaid - totalPremium)) : 0
+  const fullyPaid = totalPremium > 0 ? outstanding <= 0.01 : amountPaid > 0
+
+  return {
+    schedule,
+    totalPremium,
+    amountPaid,
+    outstanding,
+    overpayment,
+    fullyPaid,
+    paymentsTotal,
+    schedulePaid,
+  }
+}
+
+/**
  * Apply a payment amount to the next unpaid down payment / installments (FIFO).
  * Supports partial installment credit via `paid_amount`.
  *

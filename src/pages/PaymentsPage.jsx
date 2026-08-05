@@ -3,12 +3,17 @@ import { Link } from 'react-router-dom'
 import { format, parseISO, startOfMonth, isAfter } from 'date-fns'
 import { usePayments } from '../hooks/usePayments'
 import { useClients } from '../hooks/useClients'
-import { formatKSh, getVehicleSchedules } from '../utils/calculator'
+import {
+  formatKSh,
+  getVehicleSchedules,
+  getVehicleCollectionSummary,
+} from '../utils/calculator'
 import { formatNumberInput, parseNumberInput } from '../utils/numberInput'
 import { toast } from '../store/toastStore'
 import LottieLoader from '../components/ui/LottieLoader'
 import PageShell from '../components/layout/PageShell'
-import { INPUT, LABEL, BTN_PRIMARY } from '../constants/formStyles'
+import StatusBadge from '../components/ui/StatusBadge'
+import { INPUT, LABEL } from '../constants/formStyles'
 
 const METHODS = [
   { value: 'mpesa', label: 'M-Pesa' },
@@ -18,6 +23,11 @@ const METHODS = [
 ]
 
 const METHOD_LABELS = Object.fromEntries(METHODS.map(m => [m.value, m.label]))
+
+function vehicleLabel(vehicle) {
+  const year = vehicle.year ? `${vehicle.year} ` : ''
+  return `${vehicle.registration || 'No Reg'} · ${year}${vehicle.make || ''} ${vehicle.model || ''}`.trim()
+}
 
 export default function PaymentsPage() {
   const { payments, loading, saving, error, logPayment } = usePayments()
@@ -39,6 +49,45 @@ export default function PaymentsPage() {
   const clientOptions = clients.filter(c => (c.vehicles?.length ?? 0) > 0)
   const selectedClient = clients.find(c => c.id === form.clientId)
   const vehicleOptions = selectedClient?.vehicles ?? []
+  const multiVehicle = vehicleOptions.length > 1
+  const selectedVehicle = vehicleOptions.find(v => v.id === form.vehicleId)
+
+  const clientPayments = useMemo(
+    () =>
+      payments.filter(
+        payment => selectedClient && payment.client_id === selectedClient.id
+      ),
+    [payments, selectedClient]
+  )
+
+  const clientCollection = useMemo(() => {
+    if (!selectedClient) return null
+    const vehicles = selectedClient.vehicles ?? []
+    const summaries = vehicles.map(vehicle =>
+      getVehicleCollectionSummary(
+        vehicle,
+        clientPayments.filter(p => p.vehicle_id === vehicle.id)
+      )
+    )
+    return {
+      totalPremium: summaries.reduce((sum, item) => sum + item.totalPremium, 0),
+      amountPaid: summaries.reduce((sum, item) => sum + item.amountPaid, 0),
+      outstanding: summaries.reduce((sum, item) => sum + item.outstanding, 0),
+      overpayment: summaries.reduce((sum, item) => sum + item.overpayment, 0),
+      vehicles: summaries.map((summary, index) => ({
+        vehicle: vehicles[index],
+        ...summary,
+      })),
+    }
+  }, [selectedClient, clientPayments])
+
+  const selectedVehicleSummary = useMemo(() => {
+    if (!selectedVehicle) return null
+    return getVehicleCollectionSummary(
+      selectedVehicle,
+      clientPayments.filter(p => p.vehicle_id === selectedVehicle.id)
+    )
+  }, [selectedVehicle, clientPayments])
 
   const monthTotal = useMemo(() => {
     const monthStart = startOfMonth(new Date())
@@ -56,6 +105,16 @@ export default function PaymentsPage() {
       .reduce((sum, p) => sum + Number(p.amount), 0)
   }, [payments])
 
+  const selectClient = clientId => {
+    const client = clients.find(c => c.id === clientId)
+    const vehicles = client?.vehicles ?? []
+    setForm(prev => ({
+      ...prev,
+      clientId,
+      vehicleId: vehicles.length === 1 ? vehicles[0].id : '',
+    }))
+  }
+
   const handleSubmit = async e => {
     e.preventDefault()
     if (!form.clientId || !form.vehicleId || !parseNumberInput(form.amount)) {
@@ -65,19 +124,26 @@ export default function PaymentsPage() {
 
     const vehicle = vehicleOptions.find(v => v.id === form.vehicleId)
     const schedule = vehicle ? getVehicleSchedules(vehicle)[0] : null
+    const amount = parseNumberInput(form.amount)
+    const priorPaid = selectedVehicleSummary?.amountPaid ?? 0
+      const premium = selectedVehicleSummary?.totalPremium ?? (Number(vehicle?.premium) || 0)
 
     try {
       await logPayment({
         clientId: form.clientId,
         vehicleId: form.vehicleId,
         scheduleId: schedule?.id,
-        amount: parseNumberInput(form.amount),
+        amount,
         method: form.method,
         reference: form.reference,
         notes: form.notes,
         date: form.date,
       })
       await refetchClients()
+
+      const newPaid = priorPaid + amount
+      const remaining = Math.max(0, premium - newPaid)
+      const overpaid = Math.max(0, newPaid - premium)
 
       setForm({
         clientId: '',
@@ -89,7 +155,20 @@ export default function PaymentsPage() {
         date: new Date().toISOString().split('T')[0],
       })
       setShowForm(false)
-      toast('Payment logged — portfolio balance updated.')
+
+      if (overpaid > 0.01) {
+        toast(
+          `Payment logged. Overpayment of ${formatKSh(overpaid)} — confirm credit or refund with the client.`,
+          'info'
+        )
+      } else if (remaining > 0.01) {
+        toast(
+          `Payment logged. Balance due: ${formatKSh(remaining)} — remind the client before cover lapses.`,
+          'info'
+        )
+      } else {
+        toast('Payment logged — portfolio balance updated.')
+      }
     } catch (err) {
       toast(err.message || 'Could not log payment.', 'error')
     }
@@ -162,10 +241,7 @@ export default function PaymentsPage() {
                 <select
                   required
                   value={form.clientId}
-                  onChange={e => {
-                    set('clientId', e.target.value)
-                    set('vehicleId', '')
-                  }}
+                  onChange={e => selectClient(e.target.value)}
                   className={`mt-1.5 ${INPUT}`}
                 >
                   <option value="">Select client</option>
@@ -181,20 +257,34 @@ export default function PaymentsPage() {
                 <label className={LABEL}>
                   Vehicle <span className="normal-case text-red-600">*</span>
                 </label>
-                <select
-                  required
-                  value={form.vehicleId}
-                  onChange={e => set('vehicleId', e.target.value)}
-                  className={`mt-1.5 ${INPUT}`}
-                  disabled={!form.clientId}
-                >
-                  <option value="">Select vehicle</option>
-                  {vehicleOptions.map(v => (
-                    <option key={v.id} value={v.id}>
-                      {v.registration} · {v.make} {v.model}
-                    </option>
-                  ))}
-                </select>
+                {!form.clientId ? (
+                  <select disabled className={`mt-1.5 ${INPUT}`} value="">
+                    <option value="">Select a client first</option>
+                  </select>
+                ) : multiVehicle ? (
+                  <select
+                    required
+                    value={form.vehicleId}
+                    onChange={e => set('vehicleId', e.target.value)}
+                    className={`mt-1.5 ${INPUT}`}
+                  >
+                    <option value="">Select vehicle</option>
+                    {vehicleOptions.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {vehicleLabel(v)}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <>
+                    <input type="hidden" name="vehicleId" value={form.vehicleId} />
+                    <div className="mt-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800">
+                      {vehicleOptions[0]
+                        ? vehicleLabel(vehicleOptions[0])
+                        : 'No vehicle'}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div>
@@ -269,7 +359,151 @@ export default function PaymentsPage() {
         )}
 
         <div className={showForm ? 'xl:col-span-3' : 'xl:col-span-5'}>
-          {loading ? (
+          {showForm && selectedClient && clientCollection ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                      Client details
+                    </p>
+                    <h2 className="mt-1 text-lg font-bold text-slate-900">
+                      {selectedClient.name}
+                    </h2>
+                    <div className="mt-1 space-y-0.5 text-sm text-slate-500">
+                      {selectedClient.phone && <p>{selectedClient.phone}</p>}
+                      {selectedClient.id_number && (
+                        <p>ID: {selectedClient.id_number}</p>
+                      )}
+                      {selectedClient.email && <p>{selectedClient.email}</p>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <StatusBadge status={selectedClient.status} />
+                    <Link
+                      to={`/clients/${selectedClient.id}`}
+                      className="text-xs font-semibold text-primary-600 hover:text-primary-700"
+                    >
+                      Open portfolio →
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                      Premium
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">
+                      {formatKSh(clientCollection.totalPremium)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                      Collected
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-emerald-700">
+                      {formatKSh(clientCollection.amountPaid)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                      {clientCollection.overpayment > 0.01 ? 'Overpaid' : 'Balance'}
+                    </p>
+                    <p
+                      className={`mt-1 text-sm font-bold ${
+                        clientCollection.overpayment > 0.01
+                          ? 'text-sky-700'
+                          : clientCollection.outstanding > 0
+                            ? 'text-amber-600'
+                            : 'text-emerald-700'
+                      }`}
+                    >
+                      {formatKSh(
+                        clientCollection.overpayment > 0.01
+                          ? clientCollection.overpayment
+                          : clientCollection.outstanding
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {clientCollection.overpayment > 0.01 && (
+                  <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/80 px-3 py-2.5 text-xs text-sky-800">
+                    Overpayment of {formatKSh(clientCollection.overpayment)} — collected
+                    exceeds the premium. Confirm whether this is a credit, refund, or
+                    next-period payment.
+                  </div>
+                )}
+
+                {clientCollection.outstanding > 0.01 && (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-xs text-amber-800">
+                    Balance due — if they only paid for short cover (e.g. one month),
+                    remind them that {formatKSh(clientCollection.outstanding)} is still
+                    outstanding on the full premium.
+                  </div>
+                )}
+
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                    Vehicles
+                  </p>
+                  {clientCollection.vehicles.map(({ vehicle, amountPaid, totalPremium, outstanding, overpayment, fullyPaid }) => (
+                    <div
+                      key={vehicle.id}
+                      className={`rounded-xl border px-3 py-2.5 ${
+                        form.vehicleId === vehicle.id
+                          ? 'border-primary-200 bg-primary-50/50'
+                          : 'border-slate-100 bg-slate-50/60'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {vehicle.year ? `${vehicle.year} ` : ''}
+                            {vehicle.make} {vehicle.model}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {vehicle.registration || 'No Reg'}
+                            {vehicle.insurer ? ` · ${vehicle.insurer}` : ''}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            overpayment > 0.01
+                              ? 'bg-sky-50 text-sky-700'
+                              : fullyPaid
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-amber-50 text-amber-700'
+                          }`}
+                        >
+                          {overpayment > 0.01
+                            ? 'Overpaid'
+                            : fullyPaid
+                              ? 'Paid'
+                              : 'Balance due'}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-xs text-slate-600">
+                        {formatKSh(amountPaid)} / {formatKSh(totalPremium)}
+                        {overpayment > 0.01 ? (
+                          <span className="text-sky-700">
+                            {' '}
+                            · {formatKSh(overpayment)} over
+                          </span>
+                        ) : !fullyPaid ? (
+                          <span className="text-amber-700">
+                            {' '}
+                            · {formatKSh(outstanding)} left
+                          </span>
+                        ) : null}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : loading ? (
             <LottieLoader label="Loading payments..." />
           ) : payments.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-400">

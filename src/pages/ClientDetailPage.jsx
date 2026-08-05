@@ -7,10 +7,9 @@ import {
   buildInstallmentSchedule,
   formatKSh,
   getVehicleSchedules,
-  getOutstandingBalance,
-  getAmountPaid,
   getInstallmentPaidAmount,
   getNextDueInstallment,
+  getVehicleCollectionSummary,
   presetInstallmentRates,
   rateFromAmount,
 } from '../utils/calculator'
@@ -329,10 +328,14 @@ function CompactProgress({
   totalPremium,
   amountPaid,
   outstanding,
+  overpayment = 0,
   progress,
   fullyPaid,
   nextDue,
 }) {
+  const hasOverpayment = overpayment > 0.01
+  const partialPaid = !fullyPaid && amountPaid > 0 && outstanding > 0
+
   return (
     <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -344,9 +347,23 @@ function CompactProgress({
           </p>
         </div>
         <div className="text-right">
-          <span className="text-xs font-medium text-slate-500">Remaining</span>
-          <p className={`mt-0.5 text-base font-bold ${fullyPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
-            {fullyPaid ? 'Paid in Full' : formatKSh(outstanding)}
+          <span className="text-xs font-medium text-slate-500">
+            {hasOverpayment ? 'Overpayment' : 'Remaining'}
+          </span>
+          <p
+            className={`mt-0.5 text-base font-bold ${
+              hasOverpayment
+                ? 'text-sky-700'
+                : fullyPaid
+                  ? 'text-emerald-600'
+                  : 'text-amber-600'
+            }`}
+          >
+            {hasOverpayment
+              ? formatKSh(overpayment)
+              : fullyPaid
+                ? 'Paid in Full'
+                : formatKSh(outstanding)}
           </p>
         </div>
       </div>
@@ -354,7 +371,7 @@ function CompactProgress({
       <div className="mt-3">
         <div className="flex justify-between text-xs font-semibold text-slate-500 mb-1.5">
           <span>Payment Completion</span>
-          <span>{Math.round(progress)}%</span>
+          <span>{hasOverpayment ? '100%+' : `${Math.round(progress)}%`}</span>
         </div>
         <div
           className="h-2 w-full overflow-hidden rounded-full bg-slate-200/80"
@@ -362,13 +379,17 @@ function CompactProgress({
           aria-label="Premium payment progress"
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={Math.round(progress)}
+          aria-valuenow={Math.min(100, Math.round(progress))}
         >
           <div
             className={`h-full rounded-full transition-all duration-500 ease-out ${
-              fullyPaid ? 'bg-emerald-500' : 'bg-primary-600'
+              hasOverpayment
+                ? 'bg-sky-500'
+                : fullyPaid
+                  ? 'bg-emerald-500'
+                  : 'bg-primary-600'
             }`}
-            style={{ width: `${progress}%` }}
+            style={{ width: `${Math.min(100, progress)}%` }}
           />
         </div>
       </div>
@@ -379,6 +400,22 @@ function CompactProgress({
           <span className="font-semibold text-slate-800">
             {formatKSh(nextDue.amount)} on {formatDate(nextDue.due_date)}
           </span>
+        </div>
+      )}
+
+      {hasOverpayment && (
+        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-800">
+          Overpayment of {formatKSh(overpayment)} — collected exceeds the premium.
+          Confirm with the client whether this is a credit, refund, or next-period payment.
+        </div>
+      )}
+
+      {partialPaid && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
+          Balance due — remind the client that {formatKSh(outstanding)} remains on this policy.
+          {nextDue?.due_date
+            ? ` Next installment: ${formatKSh(nextDue.amount)} by ${formatDate(nextDue.due_date)}.`
+            : ''}
         </div>
       )}
     </div>
@@ -456,6 +493,7 @@ function TopPolicyOverviewCard({ vehicles, onUpdateVehicle }) {
 
 function VehicleCard({
   vehicle,
+  payments = [],
   onUpdateVehicle,
   onUpdateSchedule,
   onCreateSchedule,
@@ -463,17 +501,16 @@ function VehicleCard({
   const schedules = getVehicleSchedules(vehicle)
   const schedule = schedules[0] ?? null
 
+  const collection = getVehicleCollectionSummary(vehicle, payments)
   const nextDue = schedule ? getNextDueInstallment(schedule) : null
-  const totalPremium = schedule
-    ? toNumber(schedule.total_premium ?? vehicle.premium)
-    : toNumber(vehicle.premium)
-  const amountPaid = schedule ? toNumber(getAmountPaid(schedule)) : 0
-  const outstanding = schedule
-    ? Math.max(toNumber(getOutstandingBalance(schedule)), 0)
-    : totalPremium
+  const totalPremium = collection.totalPremium
+  const amountPaid = collection.amountPaid
+  const outstanding = collection.outstanding
+  const overpayment = collection.overpayment
   const progress = getProgressPercentage(amountPaid, totalPremium)
   const installments = schedule?.installments ?? []
-  const fullyPaid = schedule && outstanding <= 0
+  const fullyPaid = collection.fullyPaid
+  const hasOverpayment = overpayment > 0.01
 
   const [editingVehicle, setEditingVehicle] = useState(false)
   const [editingCover, setEditingCover] = useState(false)
@@ -861,13 +898,23 @@ function VehicleCard({
 
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-            fullyPaid
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-              : 'bg-amber-50 text-amber-700 border border-amber-200'
+            hasOverpayment
+              ? 'bg-sky-50 text-sky-700 border border-sky-200'
+              : fullyPaid
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-amber-50 text-amber-700 border border-amber-200'
           }`}
         >
-          <span className={`h-1.5 w-1.5 rounded-full ${fullyPaid ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-          {fullyPaid ? 'Fully Paid' : 'Balance Due'}
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              hasOverpayment
+                ? 'bg-sky-500'
+                : fullyPaid
+                  ? 'bg-emerald-500'
+                  : 'bg-amber-500'
+            }`}
+          />
+          {hasOverpayment ? 'Overpaid' : fullyPaid ? 'Fully Paid' : 'Balance Due'}
         </span>
       </div>
 
@@ -876,6 +923,7 @@ function VehicleCard({
           totalPremium={totalPremium}
           amountPaid={amountPaid}
           outstanding={outstanding}
+          overpayment={overpayment}
           progress={progress}
           fullyPaid={fullyPaid}
           nextDue={nextDue}
@@ -1514,22 +1562,23 @@ export default function ClientDetailPage() {
   const vehicles = client.vehicles ?? []
 
   const vehicleSummaries = vehicles.map(vehicle => {
-    const schedule = getVehicleSchedules(vehicle)[0] ?? null
-    const total = schedule
-      ? toNumber(schedule.total_premium ?? vehicle.premium)
-      : toNumber(vehicle.premium)
-    const paid = schedule ? toNumber(getAmountPaid(schedule)) : 0
-    const outstanding = schedule
-      ? Math.max(toNumber(getOutstandingBalance(schedule)), 0)
-      : total
-
-    return { total, paid, outstanding }
+    const summary = getVehicleCollectionSummary(vehicle, clientPayments)
+    return {
+      total: summary.totalPremium,
+      paid: summary.amountPaid,
+      outstanding: summary.outstanding,
+      overpayment: summary.overpayment,
+    }
   })
 
   const totalPremium = vehicleSummaries.reduce((sum, item) => sum + item.total, 0)
   const totalPaid = vehicleSummaries.reduce((sum, item) => sum + item.paid, 0)
   const totalOutstanding = vehicleSummaries.reduce(
     (sum, item) => sum + item.outstanding,
+    0,
+  )
+  const totalOverpayment = vehicleSummaries.reduce(
+    (sum, item) => sum + item.overpayment,
     0,
   )
 
@@ -1740,10 +1789,18 @@ export default function ClientDetailPage() {
           </div>
           <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Outstanding
+              {totalOverpayment > 0.01 ? 'Overpayment' : 'Outstanding'}
             </p>
-            <p className={`mt-1.5 text-xl font-bold tracking-tight sm:text-2xl ${totalOutstanding <= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-              {formatKSh(totalOutstanding)}
+            <p
+              className={`mt-1.5 text-xl font-bold tracking-tight sm:text-2xl ${
+                totalOverpayment > 0.01
+                  ? 'text-sky-700'
+                  : totalOutstanding <= 0
+                    ? 'text-emerald-600'
+                    : 'text-amber-600'
+              }`}
+            >
+              {formatKSh(totalOverpayment > 0.01 ? totalOverpayment : totalOutstanding)}
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
@@ -1790,6 +1847,7 @@ export default function ClientDetailPage() {
                   <VehicleCard
                     key={vehicle.id}
                     vehicle={vehicle}
+                    payments={clientPayments.filter(p => p.vehicle_id === vehicle.id)}
                     onUpdateVehicle={updates => updateVehicle(vehicle.id, updates)}
                     onUpdateSchedule={updates => {
                       const schedule = getVehicleSchedules(vehicle)[0]
