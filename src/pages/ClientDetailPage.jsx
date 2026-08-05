@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { format, parseISO } from 'date-fns'
 import { useClients } from '../hooks/useClients'
 import { usePayments } from '../hooks/usePayments'
 import {
+  amountsFromRates,
   buildInstallmentSchedule,
   formatKSh,
   getVehicleSchedules,
@@ -11,21 +11,23 @@ import {
   getAmountPaid,
   getInstallmentPaidAmount,
   getNextDueInstallment,
+  presetInstallmentRates,
+  rateFromAmount,
 } from '../utils/calculator'
-import { formatNumberInput, parseNumberInput } from '../utils/numberInput'
+import { formatNumberInput, parseNumberInput, premiumFromRate } from '../utils/numberInput'
+import { defaultExpiryDate, formatDisplayDate } from '../utils/policyDates'
 import { toast } from '../store/toastStore'
 import { INSURER_OPTIONS } from '../constants/insurers'
 import { CAR_MAKE_OPTIONS, getCarModelOptions } from '../constants/carMakes'
 import {
   INPUT,
   LABEL,
-  SECTION_TITLE,
-  EYEBROW,
   BTN_PRIMARY,
   BTN_SECONDARY,
 } from '../constants/formStyles'
 import StatusBadge from '../components/ui/StatusBadge'
 import LottieLoader from '../components/ui/LottieLoader'
+import DateInput from '../components/ui/DateInput'
 import PageShell from '../components/layout/PageShell'
 
 const POLICY_LABELS = {
@@ -54,27 +56,19 @@ const USE_TYPES = [
 
 const METHOD_LABELS = {
   mpesa: 'M-Pesa',
-  bank_transfer: 'Bank transfer',
+  bank_transfer: 'Bank Transfer',
   cash: 'Cash',
   cheque: 'Cheque',
 }
 
 function formatDate(value) {
   if (!value) return '—'
-  try {
-    return format(parseISO(value), 'd MMM yyyy')
-  } catch {
-    return value
-  }
+  return formatDisplayDate(value) || '—'
 }
 
 function formatShortDate(value) {
   if (!value) return '—'
-  try {
-    return format(parseISO(value), 'dd MMM')
-  } catch {
-    return value
-  }
+  return formatDisplayDate(value) || '—'
 }
 
 function toNumber(value) {
@@ -103,27 +97,27 @@ function getPaymentMethodStyles(method) {
   switch (method) {
     case 'mpesa':
       return {
-        badge: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        badge: 'border-emerald-200 bg-emerald-50/80 text-emerald-700',
         dot: 'bg-emerald-500',
       }
     case 'bank_transfer':
       return {
-        badge: 'border-blue-200 bg-blue-50 text-blue-700',
+        badge: 'border-blue-200 bg-blue-50/80 text-blue-700',
         dot: 'bg-blue-500',
       }
     case 'cash':
       return {
-        badge: 'border-amber-200 bg-amber-50 text-amber-700',
+        badge: 'border-amber-200 bg-amber-50/80 text-amber-700',
         dot: 'bg-amber-500',
       }
     case 'cheque':
       return {
-        badge: 'border-violet-200 bg-violet-50 text-violet-700',
+        badge: 'border-violet-200 bg-violet-50/80 text-violet-700',
         dot: 'bg-violet-500',
       }
     default:
       return {
-        badge: 'border-slate-200 bg-slate-50 text-slate-700',
+        badge: 'border-slate-200 bg-slate-50/80 text-slate-700',
         dot: 'bg-slate-400',
       }
   }
@@ -166,68 +160,49 @@ function getInstallmentStatus(installment) {
   }
 }
 
-function Field({ label, required, children, className = '' }) {
+function Field({ label, required, hint, children, className = '' }) {
   return (
     <div className={className}>
       <label className={LABEL}>
         {label}
-        {required && <span className="ml-0.5 text-red-600">*</span>}
+        {required && <span className="ml-0.5 text-red-500">*</span>}
       </label>
+      {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
       <div className="mt-1.5">{children}</div>
     </div>
   )
 }
 
-function DetailItem({ label, value, className = '' }) {
+function DetailItem({ label, value, icon, className = '' }) {
   return (
-    <div className={className}>
-      <dt className="text-xs font-bold uppercase tracking-[0.06em] text-slate-500">
-        {label}
-      </dt>
-      <dd className="mt-1.5 break-words text-[15px] font-medium text-slate-800">
+    <div className={`rounded-xl border border-slate-100 bg-slate-50/50 p-3 transition-all hover:bg-slate-50/80 ${className}`}>
+      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        {icon && <span className="text-slate-400">{icon}</span>}
+        <span>{label}</span>
+      </div>
+      <dd className="mt-1 break-words text-sm font-semibold text-slate-800">
         {value || '—'}
       </dd>
     </div>
   )
 }
 
-function ProfileSection({ title, children }) {
+function EmptyState({ children, icon }) {
   return (
-    <section className="border-b border-slate-100 py-6 last:border-b-0 last:pb-0 first:pt-0">
-      <h3 className="text-base font-semibold text-slate-800">{title}</h3>
-      <div className="mt-4">{children}</div>
-    </section>
-  )
-}
-
-function SummaryCard({
-  label,
-  value,
-  caption,
-  valueClassName = 'text-slate-950',
-  className = '',
-}) {
-  return (
-    <div className={`rounded-2xl border bg-white p-4 shadow-card ${className}`}>
-      <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
-        {label}
-      </p>
-      <p
-        className={`mt-2 break-words text-xl font-bold leading-tight tracking-tight sm:text-2xl ${valueClassName}`}
-      >
-        {value}
-      </p>
-      {caption && (
-        <p className="mt-1.5 text-sm leading-5 text-slate-500">{caption}</p>
-      )}
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+      {icon && <div className="mb-3 rounded-full bg-slate-100 p-3 text-slate-400">{icon}</div>}
+      <p className="max-w-xs text-sm font-medium text-slate-500">{children}</p>
     </div>
   )
 }
 
-function EmptyState({ children }) {
+function Subheading({ children, action }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-base text-slate-400">
-      {children}
+    <div className="flex items-center justify-between">
+      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        {children}
+      </h4>
+      {action}
     </div>
   )
 }
@@ -255,28 +230,28 @@ function NotesBlock({ title, value, onSave }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
+    <div className="group rounded-xl border border-slate-200/70 bg-slate-50/60 p-3.5 transition-all hover:border-slate-300 hover:bg-slate-50">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-[0.06em] text-slate-500">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
           {title}
         </p>
         {!editing ? (
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="text-sm font-bold text-primary-700 hover:text-primary-800"
+            className="text-xs font-semibold text-primary-600 transition hover:text-primary-700 focus:outline-none"
           >
-            Edit
+            {value ? 'Edit' : '+ Add Note'}
           </button>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
                 setDraft(value || '')
                 setEditing(false)
               }}
-              className="text-sm font-bold text-slate-500"
+              className="text-xs font-medium text-slate-500 hover:text-slate-700"
               disabled={saving}
             >
               Cancel
@@ -285,7 +260,7 @@ function NotesBlock({ title, value, onSave }) {
               type="button"
               onClick={save}
               disabled={saving}
-              className="text-sm font-bold text-primary-700"
+              className="rounded-md bg-primary-600 px-2.5 py-1 text-xs font-semibold text-white shadow-xs hover:bg-primary-700 disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -298,15 +273,15 @@ function NotesBlock({ title, value, onSave }) {
           rows={3}
           value={draft}
           onChange={e => setDraft(e.target.value)}
-          className={`${INPUT} mt-2`}
-          placeholder={`Add ${title.toLowerCase()}…`}
+          className={`${INPUT} mt-2 text-sm`}
+          placeholder={`Add ${title.toLowerCase()} notes…`}
         />
       ) : value ? (
-        <p className="mt-2 whitespace-pre-wrap break-words text-base leading-6 text-slate-700">
+        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700">
           {value}
         </p>
       ) : (
-        <p className="mt-2 text-base text-slate-400">No notes yet.</p>
+        <p className="mt-1.5 text-xs italic text-slate-400">No notes recorded.</p>
       )}
     </div>
   )
@@ -315,12 +290,12 @@ function NotesBlock({ title, value, onSave }) {
 function SectionEditBar({ editing, onEdit, onCancel, onSave, saving }) {
   if (editing) {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className={BTN_SECONDARY}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50"
         >
           Cancel
         </button>
@@ -328,7 +303,7 @@ function SectionEditBar({ editing, onEdit, onCancel, onSave, saving }) {
           type="button"
           onClick={onSave}
           disabled={saving}
-          className={BTN_PRIMARY}
+          className="rounded-lg bg-primary-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-primary-700 disabled:opacity-50"
         >
           {saving ? 'Saving…' : 'Save changes'}
         </button>
@@ -337,69 +312,52 @@ function SectionEditBar({ editing, onEdit, onCancel, onSave, saving }) {
   }
 
   return (
-    <button type="button" onClick={onEdit} className={BTN_SECONDARY}>
+    <button
+      type="button"
+      onClick={onEdit}
+      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+    >
+      <svg className="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+      </svg>
       Edit
     </button>
   )
 }
 
-function PremiumPanel({ totalPremium, amountPaid, outstanding, progress, fullyPaid, nextDue }) {
+function CompactProgress({
+  totalPremium,
+  amountPaid,
+  outstanding,
+  progress,
+  fullyPaid,
+  nextDue,
+}) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
-      <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <div className="p-4 sm:p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
-            Total premium
-          </p>
-          <p className="mt-2 break-words text-2xl font-bold tracking-tight text-slate-950">
-            {formatKSh(totalPremium)}
-          </p>
-        </div>
-        <div className="p-4 sm:p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
-            Amount paid
-          </p>
-          <p className="mt-2 break-words text-2xl font-bold tracking-tight text-emerald-700">
+    <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <span className="text-xs font-medium text-slate-500">Collected vs Total</span>
+          <p className="mt-0.5 text-base font-bold text-slate-900">
             {formatKSh(amountPaid)}
+            <span className="text-xs font-normal text-slate-400"> / {formatKSh(totalPremium)}</span>
           </p>
         </div>
-        <div className="p-4 sm:p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
-            Outstanding balance
-          </p>
-          <p
-            className={`mt-2 break-words text-2xl font-bold tracking-tight ${
-              fullyPaid ? 'text-emerald-700' : 'text-amber-700'
-            }`}
-          >
-            {formatKSh(outstanding)}
+        <div className="text-right">
+          <span className="text-xs font-medium text-slate-500">Remaining</span>
+          <p className={`mt-0.5 text-base font-bold ${fullyPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {fullyPaid ? 'Paid in Full' : formatKSh(outstanding)}
           </p>
         </div>
       </div>
 
-      <div className="border-t border-slate-100 bg-slate-50/80 p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <p className="text-base font-bold text-slate-900">Payment progress</p>
-            <p className="mt-0.5 text-sm text-slate-500">
-              {fullyPaid
-                ? 'This premium has been fully paid.'
-                : `${Math.round(progress)}% of the premium has been received.`}
-            </p>
-          </div>
-          <span
-            className={`shrink-0 rounded-full border px-3 py-1 text-sm font-bold ${
-              fullyPaid
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-blue-200 bg-blue-50 text-blue-700'
-            }`}
-          >
-            {fullyPaid ? 'Fully paid' : `${Math.round(progress)}% paid`}
-          </span>
+      <div className="mt-3">
+        <div className="flex justify-between text-xs font-semibold text-slate-500 mb-1.5">
+          <span>Payment Completion</span>
+          <span>{Math.round(progress)}%</span>
         </div>
-
         <div
-          className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200"
+          className="h-2 w-full overflow-hidden rounded-full bg-slate-200/80"
           role="progressbar"
           aria-label="Premium payment progress"
           aria-valuemin={0}
@@ -407,28 +365,90 @@ function PremiumPanel({ totalPremium, amountPaid, outstanding, progress, fullyPa
           aria-valuenow={Math.round(progress)}
         >
           <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              fullyPaid ? 'bg-emerald-500' : 'bg-blue-600'
+            className={`h-full rounded-full transition-all duration-500 ease-out ${
+              fullyPaid ? 'bg-emerald-500' : 'bg-primary-600'
             }`}
             style={{ width: `${progress}%` }}
           />
         </div>
+      </div>
 
-        {nextDue && !fullyPaid && (
-          <div className="mt-3 flex flex-col gap-1 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.1em] text-amber-700">
-                Next installment
-              </p>
-              <p className="mt-1 text-base font-semibold text-amber-950">
-                Due {formatDate(nextDue.due_date)}
-              </p>
-            </div>
-            <p className="text-xl font-bold text-amber-900">
-              {formatKSh(nextDue.amount)}
-            </p>
+      {nextDue && !fullyPaid && (
+        <div className="mt-3 flex items-center justify-between border-t border-slate-200/60 pt-2.5 text-xs">
+          <span className="text-slate-500">Next Due Date</span>
+          <span className="font-semibold text-slate-800">
+            {formatKSh(nextDue.amount)} on {formatDate(nextDue.due_date)}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TopPolicyOverviewCard({ vehicles, onUpdateVehicle }) {
+  const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0]?.id || null)
+
+  const activeVehicle = useMemo(
+    () => vehicles.find(v => v.id === selectedVehicleId) || vehicles[0],
+    [vehicles, selectedVehicleId]
+  )
+
+  if (!activeVehicle) {
+    return (
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 h-full flex items-center justify-center shadow-xs">
+        <p className="text-xs text-slate-400">No active policy details available.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex flex-col justify-between h-full">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              Policy Overview
+            </h3>
           </div>
-        )}
+
+          {vehicles.length > 1 && (
+            <select
+              value={activeVehicle.id}
+              onChange={e => setSelectedVehicleId(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+            >
+              {vehicles.map(v => (
+                <option key={v.id} value={v.id}>
+                  {v.registration || v.make} ({POLICY_LABELS[v.policy_type] || 'Policy'})
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          <DetailItem label="Registration" value={activeVehicle.registration || 'Pending'} />
+          <DetailItem label="Cover Type" value={POLICY_LABELS[activeVehicle.policy_type] ?? activeVehicle.policy_type} />
+          <DetailItem label="Insurer" value={activeVehicle.insurer} />
+          <DetailItem label="Policy No." value={activeVehicle.policy_number} />
+          <DetailItem label="Vehicle Value" value={formatKSh(activeVehicle.vehicle_value ?? 0)} />
+          <DetailItem label="Sum Insured" value={formatKSh(activeVehicle.vehicle_value ?? activeVehicle.sum_insured ?? 0)} />
+          <DetailItem label="Start Date" value={formatDate(activeVehicle.start_date)} />
+          <DetailItem label="Renewal Date" value={formatDate(activeVehicle.expiry_date)} />
+          <DetailItem label="Usage" value={USE_LABELS[activeVehicle.use_type] ?? activeVehicle.use_type} />
+        </dl>
+      </div>
+
+      <div className="mt-4 border-t border-slate-100 pt-3 flex items-center justify-between text-xs text-slate-500">
+        <span className="font-medium text-slate-600">
+          {activeVehicle.year ? `${activeVehicle.year} ` : ''}{activeVehicle.make} {activeVehicle.model}
+        </span>
+        <a href="#vehicles-section" className="font-semibold text-primary-600 hover:text-primary-700">
+          View Schedules & Notes ↓
+        </a>
       </div>
     </div>
   )
@@ -492,7 +512,7 @@ function VehicleCard({
       policy_type: vehicle.policy_type || 'comprehensive',
       insurer: vehicle.insurer || '',
       policy_number: vehicle.policy_number || '',
-      sum_insured: formatNumberInput(String(vehicle.sum_insured || '')),
+      premium_rate: '',
       premium: formatNumberInput(String(vehicle.premium || '')),
     })
     setEditingCover(true)
@@ -508,20 +528,27 @@ function VehicleCard({
 
   const startPlanEdit = () => {
     const count = schedule?.installment_count || installments.length || 3
+    const premiumValue = totalPremium || vehicle.premium || 0
     setPlanForm({
       installment_count: Math.min(Math.max(count, 1), 5),
       allow_five: count > 3,
-      premium: formatNumberInput(String(totalPremium || vehicle.premium || '')),
+      premium: formatNumberInput(String(premiumValue || '')),
       installments: (installments.length
         ? installments
         : buildInstallmentSchedule({
-            premium: totalPremium || vehicle.premium,
+            premium: premiumValue,
             installmentCount: 3,
             startDate: vehicle.start_date,
           })?.installments ?? []
       ).map(item => ({
         number: item.number,
         amount: formatNumberInput(String(item.amount ?? '')),
+        rate: formatNumberInput(
+          String(
+            item.rate ??
+              rateFromAmount(premiumValue, item.amount ?? 0),
+          ),
+        ),
         due_date: item.due_date || '',
         paid: item.paid,
         paid_at: item.paid_at,
@@ -537,12 +564,24 @@ function VehicleCard({
     startDate,
     allowFive,
     existingInstallments = [],
-    keepPaid = true,
+    { keepPaid = true, rates = null } = {},
   ) => {
+    const premiumNumber = Number(parseNumberInput(premium)) || 0
+    const resolvedRates =
+      Array.isArray(rates) && rates.length === count
+        ? rates
+        : existingInstallments.length === count &&
+            existingInstallments.every(item => item.rate != null && item.rate !== '')
+          ? existingInstallments.map(
+              item => Number(parseNumberInput(item.rate)) || 0,
+            )
+          : presetInstallmentRates(count, 'equal')
+
     const built = buildInstallmentSchedule({
-      premium: Number(parseNumberInput(premium)) || 0,
+      premium: premiumNumber,
       installmentCount: count,
       startDate,
+      rates: resolvedRates,
       maxInstallments: allowFive ? 5 : 3,
       overrides: keepPaid
         ? existingInstallments.map(item => ({
@@ -556,11 +595,82 @@ function VehicleCard({
     return (built?.installments ?? []).map(item => ({
       number: item.number,
       amount: formatNumberInput(String(item.amount)),
+      rate: formatNumberInput(String(item.rate)),
       due_date: item.due_date,
       paid: item.paid,
       paid_at: item.paid_at,
       paid_amount: item.paid_amount,
     }))
+  }
+
+  const applyPlanRatePreset = preset => {
+    const rates = presetInstallmentRates(planForm.installment_count, preset)
+    setPlanForm(prev => ({
+      ...prev,
+      installments: regeneratePlanDates(
+        prev.installment_count,
+        prev.premium,
+        vehicle.start_date,
+        prev.allow_five,
+        prev.installments,
+        { keepPaid: true, rates },
+      ),
+    }))
+  }
+
+  const updatePlanInstallment = (index, key, value) => {
+    setPlanForm(prev => {
+      const premiumNumber = Number(parseNumberInput(prev.premium)) || 0
+
+      if (key === 'due_date') {
+        return {
+          ...prev,
+          installments: prev.installments.map((row, i) =>
+            i === index ? { ...row, due_date: value } : row,
+          ),
+        }
+      }
+
+      if (key === 'rate') {
+        const rate = formatNumberInput(value)
+        const rates = prev.installments.map((row, i) =>
+          i === index
+            ? Number(parseNumberInput(rate)) || 0
+            : Number(parseNumberInput(row.rate)) || 0,
+        )
+        const amounts = amountsFromRates(premiumNumber, rates)
+
+        return {
+          ...prev,
+          installments: prev.installments.map((row, i) => ({
+            ...row,
+            rate: i === index ? rate : row.rate,
+            amount: formatNumberInput(String(amounts[i] ?? 0)),
+          })),
+        }
+      }
+
+      const amount = formatNumberInput(value)
+      return {
+        ...prev,
+        installments: prev.installments.map((row, i) =>
+          i === index
+            ? {
+                ...row,
+                amount,
+                rate: formatNumberInput(
+                  String(
+                    rateFromAmount(
+                      premiumNumber,
+                      parseNumberInput(amount) || 0,
+                    ),
+                  ),
+                ),
+              }
+            : row,
+        ),
+      }
+    })
   }
 
   const saveVehicle = async () => {
@@ -582,6 +692,7 @@ function VehicleCard({
         year: vehicleForm.year ? Number(vehicleForm.year) : null,
         engine_capacity: vehicleForm.engine_capacity.trim() || null,
         vehicle_value: Number(parseNumberInput(vehicleForm.vehicle_value) || 0),
+        sum_insured: Number(parseNumberInput(vehicleForm.vehicle_value) || 0),
         use_type: vehicleForm.use_type,
       })
       setEditingVehicle(false)
@@ -606,7 +717,7 @@ function VehicleCard({
         policy_type: coverForm.policy_type,
         insurer: coverForm.insurer.trim() || 'Unknown',
         policy_number: coverForm.policy_number.trim() || null,
-        sum_insured: Number(parseNumberInput(coverForm.sum_insured) || 0),
+        sum_insured: Number(vehicle.vehicle_value || 0),
         premium,
       })
 
@@ -653,6 +764,24 @@ function VehicleCard({
       return
     }
 
+    const rateTotal = planForm.installments.reduce(
+      (sum, item) => sum + (Number(parseNumberInput(item.rate)) || 0),
+      0,
+    )
+    const amountTotal = planForm.installments.reduce(
+      (sum, item) => sum + (Number(parseNumberInput(item.amount)) || 0),
+      0,
+    )
+
+    if (Math.abs(rateTotal - 100) >= 0.05) {
+      toast('Installment rates must add up to 100%.', 'error')
+      return
+    }
+    if (Math.abs(amountTotal - premium) >= 0.5) {
+      toast('Installment amounts must add up to the total premium.', 'error')
+      return
+    }
+
     const nextInstallments = planForm.installments.map((item, index) => ({
       number: index + 1,
       amount: Number(parseNumberInput(item.amount)) || 0,
@@ -696,49 +825,54 @@ function VehicleCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
-      <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-4 py-4 text-white sm:px-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-              Insured vehicle
-            </p>
-            <h3 className="mt-1.5 break-words text-xl font-bold tracking-tight">
+    <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-shadow hover:shadow-md">
+      {/* Card Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/40 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
               {vehicle.year ? `${vehicle.year} ` : ''}
               {vehicle.make} {vehicle.model}
             </h3>
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              <span className="inline-flex max-w-full rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-bold uppercase tracking-[0.08em] text-white">
-                <span className="truncate">
-                  {vehicle.registration || 'No registration'}
-                </span>
+            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span className="font-bold tracking-wide uppercase text-slate-700">
+                {vehicle.registration || 'No Reg'}
               </span>
-              {vehicle.chassis && (
-                <span className="inline-flex max-w-full rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-medium text-white/85">
-                  Chassis {vehicle.chassis}
-                </span>
+              {vehicle.insurer && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span>{vehicle.insurer}</span>
+                </>
+              )}
+              {vehicle.policy_number && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span className="font-mono text-slate-600">#{vehicle.policy_number}</span>
+                </>
               )}
             </div>
           </div>
-
-          <div className="min-w-0 border-t border-white/10 pt-3 sm:border-t-0 sm:border-l sm:pl-4 sm:pt-0">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-400">
-              Insurer
-            </p>
-            <p className="mt-1 break-words text-base font-bold text-white">
-              {vehicle.insurer || 'Not specified'}
-            </p>
-            {vehicle.policy_number && (
-              <p className="mt-1 break-all text-sm text-slate-400">
-                Policy {vehicle.policy_number}
-              </p>
-            )}
-          </div>
         </div>
+
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+            fullyPaid
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-amber-50 text-amber-700 border border-amber-200'
+          }`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${fullyPaid ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          {fullyPaid ? 'Fully Paid' : 'Balance Due'}
+        </span>
       </div>
 
-      <div className="space-y-5 p-4 sm:p-5">
-        <PremiumPanel
+      <div className="p-5 space-y-6">
+        <CompactProgress
           totalPremium={totalPremium}
           amountPaid={amountPaid}
           outstanding={outstanding}
@@ -747,536 +881,536 @@ function VehicleCard({
           nextDue={nextDue}
         />
 
-        {/* Vehicle details */}
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className={SECTION_TITLE}>Vehicle details</h4>
-            <SectionEditBar
-              editing={editingVehicle}
-              onEdit={startVehicleEdit}
-              onCancel={() => setEditingVehicle(false)}
-              onSave={saveVehicle}
-              saving={saving}
-            />
-          </div>
-
-          {editingVehicle ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Registration">
-                <input
-                  value={vehicleForm.registration}
-                  onChange={e =>
-                    setVehicleForm(prev => ({
-                      ...prev,
-                      registration: e.target.value,
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Chassis">
-                <input
-                  value={vehicleForm.chassis}
-                  onChange={e =>
-                    setVehicleForm(prev => ({ ...prev, chassis: e.target.value }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Make">
-                <select
-                  value={vehicleForm.make}
-                  onChange={e =>
-                    setVehicleForm(prev => ({
-                      ...prev,
-                      make: e.target.value,
-                      model: '',
-                    }))
-                  }
-                  className={INPUT}
+        {/* Section Editors */}
+        <section className="space-y-4">
+          <Subheading
+            action={
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={startVehicleEdit}
+                  className="rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 >
-                  {CAR_MAKE_OPTIONS.map(option => (
-                    <option key={option.value || 'empty'} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Model">
-                {vehicleForm.make &&
-                CAR_MAKE_OPTIONS.some(o => o.value === vehicleForm.make) &&
-                vehicleForm.make !== 'Other' ? (
+                  Edit Vehicle
+                </button>
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={startCoverEdit}
+                  className="rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  Edit Cover
+                </button>
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={startDatesEdit}
+                  className="rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  Edit Dates
+                </button>
+              </div>
+            }
+          >
+            Vehicle Configuration
+          </Subheading>
+
+          {editingVehicle && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Vehicle Information</h5>
+                <SectionEditBar
+                  editing
+                  onCancel={() => setEditingVehicle(false)}
+                  onSave={saveVehicle}
+                  saving={saving}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Registration">
+                  <input
+                    value={vehicleForm.registration}
+                    onChange={e => setVehicleForm(prev => ({ ...prev, registration: e.target.value }))}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Chassis Number">
+                  <input
+                    value={vehicleForm.chassis}
+                    onChange={e => setVehicleForm(prev => ({ ...prev, chassis: e.target.value }))}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Make">
                   <select
-                    value={vehicleForm.model}
-                    onChange={e =>
-                      setVehicleForm(prev => ({ ...prev, model: e.target.value }))
-                    }
+                    value={vehicleForm.make}
+                    onChange={e => setVehicleForm(prev => ({ ...prev, make: e.target.value, model: '' }))}
                     className={INPUT}
                   >
-                    {modelOptions.map(option => (
+                    {CAR_MAKE_OPTIONS.map(option => (
                       <option key={option.value || 'empty'} value={option.value}>
                         {option.label}
                       </option>
                     ))}
                   </select>
-                ) : (
+                </Field>
+                <Field label="Model">
+                  {vehicleForm.make &&
+                  CAR_MAKE_OPTIONS.some(o => o.value === vehicleForm.make) &&
+                  vehicleForm.make !== 'Other' ? (
+                    <select
+                      value={vehicleForm.model}
+                      onChange={e => setVehicleForm(prev => ({ ...prev, model: e.target.value }))}
+                      className={INPUT}
+                    >
+                      {modelOptions.map(option => (
+                        <option key={option.value || 'empty'} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={vehicleForm.model}
+                      onChange={e => setVehicleForm(prev => ({ ...prev, model: e.target.value }))}
+                      className={INPUT}
+                    />
+                  )}
+                </Field>
+                <Field label="Year">
                   <input
-                    value={vehicleForm.model}
-                    onChange={e =>
-                      setVehicleForm(prev => ({ ...prev, model: e.target.value }))
-                    }
+                    type="text"
+                    inputMode="numeric"
+                    value={vehicleForm.year}
+                    onChange={e => setVehicleForm(prev => ({ ...prev, year: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
                     className={INPUT}
-                  />
-                )}
-              </Field>
-              <Field label="Year">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={vehicleForm.year}
-                  onChange={e =>
-                    setVehicleForm(prev => ({
-                      ...prev,
-                      year: e.target.value.replace(/\D/g, '').slice(0, 4),
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Engine">
-                <input
-                  value={vehicleForm.engine_capacity}
-                  onChange={e =>
-                    setVehicleForm(prev => ({
-                      ...prev,
-                      engine_capacity: e.target.value,
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Vehicle value">
-                <input
-                  value={vehicleForm.vehicle_value}
-                  onChange={e =>
-                    setVehicleForm(prev => ({
-                      ...prev,
-                      vehicle_value: formatNumberInput(e.target.value),
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Use type">
-                <select
-                  value={vehicleForm.use_type}
-                  onChange={e =>
-                    setVehicleForm(prev => ({
-                      ...prev,
-                      use_type: e.target.value,
-                    }))
-                  }
-                  className={INPUT}
-                >
-                  {USE_TYPES.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <DetailItem
-                label="Registration"
-                value={vehicle.registration || 'Pending'}
-              />
-              <DetailItem label="Chassis" value={vehicle.chassis} />
-              <DetailItem
-                label="Use"
-                value={USE_LABELS[vehicle.use_type] ?? vehicle.use_type}
-              />
-              <DetailItem
-                label="Value"
-                value={formatKSh(vehicle.vehicle_value ?? 0)}
-              />
-            </div>
-          )}
-
-          <NotesBlock
-            title="Vehicle notes"
-            value={vehicle.vehicle_notes}
-            onSave={text => onUpdateVehicle({ vehicle_notes: text.trim() || null })}
-          />
-        </section>
-
-        {/* Cover */}
-        <section className="space-y-3 border-t border-slate-100 pt-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className={SECTION_TITLE}>Cover information</h4>
-            <SectionEditBar
-              editing={editingCover}
-              onEdit={startCoverEdit}
-              onCancel={() => setEditingCover(false)}
-              onSave={saveCover}
-              saving={saving}
-            />
-          </div>
-
-          {editingCover ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Cover type">
-                <select
-                  value={coverForm.policy_type}
-                  onChange={e =>
-                    setCoverForm(prev => ({
-                      ...prev,
-                      policy_type: e.target.value,
-                    }))
-                  }
-                  className={INPUT}
-                >
-                  {POLICY_TYPES.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Insurer">
-                <select
-                  value={
-                    INSURER_OPTIONS.some(
-                      o => o.value && o.value === coverForm.insurer,
-                    )
-                      ? coverForm.insurer
-                      : 'Other'
-                  }
-                  onChange={e =>
-                    setCoverForm(prev => ({
-                      ...prev,
-                      insurer:
-                        e.target.value === 'Other' ? '' : e.target.value,
-                    }))
-                  }
-                  className={INPUT}
-                >
-                  {INSURER_OPTIONS.map(option => (
-                    <option key={option.value || 'empty'} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              {!INSURER_OPTIONS.some(
-                o => o.value && o.value === coverForm.insurer,
-              ) && (
-                <Field label="Insurer name" className="sm:col-span-2">
-                  <input
-                    value={coverForm.insurer}
-                    onChange={e =>
-                      setCoverForm(prev => ({
-                        ...prev,
-                        insurer: e.target.value,
-                      }))
-                    }
-                    className={INPUT}
-                    placeholder="Enter insurer name"
                   />
                 </Field>
-              )}
-              <Field label="Policy number">
-                <input
-                  value={coverForm.policy_number}
-                  onChange={e =>
-                    setCoverForm(prev => ({
-                      ...prev,
-                      policy_number: e.target.value,
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Sum insured">
-                <input
-                  value={coverForm.sum_insured}
-                  onChange={e =>
-                    setCoverForm(prev => ({
-                      ...prev,
-                      sum_insured: formatNumberInput(e.target.value),
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-              <Field label="Total premium" required className="sm:col-span-2">
-                <input
-                  value={coverForm.premium}
-                  onChange={e =>
-                    setCoverForm(prev => ({
-                      ...prev,
-                      premium: formatNumberInput(e.target.value),
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <DetailItem
-                label="Cover type"
-                value={
-                  POLICY_LABELS[vehicle.policy_type] ?? vehicle.policy_type
-                }
-              />
-              <DetailItem label="Insurer" value={vehicle.insurer} />
-              <DetailItem label="Policy no." value={vehicle.policy_number} />
-              <DetailItem
-                label="Sum insured"
-                value={formatKSh(vehicle.sum_insured ?? 0)}
-              />
+                <Field label="Engine Capacity">
+                  <input
+                    value={vehicleForm.engine_capacity}
+                    onChange={e => setVehicleForm(prev => ({ ...prev, engine_capacity: e.target.value }))}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Vehicle Value">
+                  <input
+                    value={vehicleForm.vehicle_value}
+                    onChange={e => setVehicleForm(prev => ({ ...prev, vehicle_value: formatNumberInput(e.target.value) }))}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Use Type">
+                  <select
+                    value={vehicleForm.use_type}
+                    onChange={e => setVehicleForm(prev => ({ ...prev, use_type: e.target.value }))}
+                    className={INPUT}
+                  >
+                    {USE_TYPES.map(type => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
             </div>
           )}
 
-          <NotesBlock
-            title="Cover / policy notes"
-            value={vehicle.cover_notes}
-            onSave={text => onUpdateVehicle({ cover_notes: text.trim() || null })}
-          />
-        </section>
-
-        {/* Policy dates */}
-        <section className="space-y-3 border-t border-slate-100 pt-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className={SECTION_TITLE}>Policy dates</h4>
-            <SectionEditBar
-              editing={editingDates}
-              onEdit={startDatesEdit}
-              onCancel={() => setEditingDates(false)}
-              onSave={saveDates}
-              saving={saving}
-            />
-          </div>
-
-          {editingDates ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Start date" required>
-                <input
-                  type="date"
-                  value={datesForm.start_date}
-                  onChange={e =>
-                    setDatesForm(prev => ({
-                      ...prev,
-                      start_date: e.target.value,
-                    }))
-                  }
-                  className={INPUT}
+          {editingCover && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Cover Details</h5>
+                <SectionEditBar
+                  editing
+                  onCancel={() => setEditingCover(false)}
+                  onSave={saveCover}
+                  saving={saving}
                 />
-              </Field>
-              <Field label="Expiry / renewal" required>
-                <input
-                  type="date"
-                  value={datesForm.expiry_date}
-                  onChange={e =>
-                    setDatesForm(prev => ({
-                      ...prev,
-                      expiry_date: e.target.value,
-                    }))
-                  }
-                  className={INPUT}
-                />
-              </Field>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Cover Type">
+                  <select
+                    value={coverForm.policy_type}
+                    onChange={e => setCoverForm(prev => ({ ...prev, policy_type: e.target.value }))}
+                    className={INPUT}
+                  >
+                    {POLICY_TYPES.map(type => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Insurer">
+                  <select
+                    value={
+                      INSURER_OPTIONS.some(o => o.value && o.value === coverForm.insurer)
+                        ? coverForm.insurer
+                        : 'Other'
+                    }
+                    onChange={e => setCoverForm(prev => ({ ...prev, insurer: e.target.value === 'Other' ? '' : e.target.value }))}
+                    className={INPUT}
+                  >
+                    {INSURER_OPTIONS.map(option => (
+                      <option key={option.value || 'empty'} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {!INSURER_OPTIONS.some(o => o.value && o.value === coverForm.insurer) && (
+                  <Field label="Insurer Name" className="sm:col-span-2">
+                    <input
+                      value={coverForm.insurer}
+                      onChange={e => setCoverForm(prev => ({ ...prev, insurer: e.target.value }))}
+                      className={INPUT}
+                      placeholder="Enter insurer name"
+                    />
+                  </Field>
+                )}
+                <Field label="Policy Number">
+                  <input
+                    value={coverForm.policy_number}
+                    onChange={e => setCoverForm(prev => ({ ...prev, policy_number: e.target.value }))}
+                    className={INPUT}
+                  />
+                </Field>
+                <Field label="Sum Insured" hint="Auto-filled from vehicle value">
+                  <input
+                    type="text"
+                    readOnly
+                    value={formatNumberInput(String(vehicle.vehicle_value || '')) || '—'}
+                    className={`${INPUT} bg-slate-100/60 text-slate-500 cursor-not-allowed`}
+                    tabIndex={-1}
+                  />
+                </Field>
+                <Field label="Premium Rate" hint="Optional % of vehicle value">
+                  <div className="relative">
+                    <input
+                      value={coverForm.premium_rate || ''}
+                      onChange={e => {
+                        const premium_rate = formatNumberInput(e.target.value)
+                        setCoverForm(prev => {
+                          const calculated = premiumFromRate(vehicle.vehicle_value, premium_rate)
+                          return {
+                            ...prev,
+                            premium_rate,
+                            ...(calculated != null ? { premium: calculated } : {}),
+                          }
+                        })
+                      }}
+                      placeholder="e.g. 4.5"
+                      className={`${INPUT} pr-10`}
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-sm font-medium text-slate-400">
+                      %
+                    </span>
+                  </div>
+                </Field>
+                <Field label="Total Premium" required className="sm:col-span-2">
+                  <input
+                    value={coverForm.premium}
+                    onChange={e => setCoverForm(prev => ({ ...prev, premium: formatNumberInput(e.target.value), premium_rate: '' }))}
+                    className={INPUT}
+                  />
+                </Field>
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <DetailItem
-                label="Cover started"
-                value={formatDate(vehicle.start_date)}
-              />
-              <DetailItem
-                label="Annual renewal"
-                value={formatDate(vehicle.expiry_date)}
-              />
+          )}
+
+          {editingDates && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Effective Dates</h5>
+                <SectionEditBar
+                  editing
+                  onCancel={() => setEditingDates(false)}
+                  onSave={saveDates}
+                  saving={saving}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Start Date" required>
+                  <DateInput
+                    value={datesForm.start_date}
+                    onChange={start_date => {
+                      setDatesForm(prev => ({
+                        ...prev,
+                        start_date,
+                        expiry_date: start_date ? defaultExpiryDate(start_date) : prev.expiry_date,
+                      }))
+                    }}
+                  />
+                </Field>
+                <Field label="Expiry / Renewal Date" required hint="Defaults to annual schedule">
+                  <DateInput
+                    value={datesForm.expiry_date}
+                    onChange={expiry_date => setDatesForm(prev => ({ ...prev, expiry_date }))}
+                  />
+                </Field>
+              </div>
             </div>
           )}
         </section>
 
-        {/* Payment plan */}
-        <section className="space-y-3 border-t border-slate-100 pt-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h4 className={SECTION_TITLE}>Payment plan & installments</h4>
-              <p className="mt-1 text-sm text-slate-500">
-                Edit installment amounts and due dates without re-onboarding.
-              </p>
-            </div>
-            <SectionEditBar
-              editing={editingPlan}
-              onEdit={startPlanEdit}
-              onCancel={() => setEditingPlan(false)}
-              onSave={savePlan}
-              saving={saving}
-            />
-          </div>
+        {/* Installment Plan Section */}
+        <section className="border-t border-slate-100 pt-5 space-y-4">
+          <Subheading
+            action={
+              <SectionEditBar
+                editing={editingPlan}
+                onEdit={startPlanEdit}
+                onCancel={() => setEditingPlan(false)}
+                onSave={savePlan}
+                saving={saving}
+              />
+            }
+          >
+            Payment Schedule
+          </Subheading>
 
           {editingPlan ? (
-            <div className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="Total premium" required>
+                <Field label="Total Premium" required>
                   <input
                     value={planForm.premium}
-                    onChange={e =>
-                      setPlanForm(prev => ({
-                        ...prev,
-                        premium: formatNumberInput(e.target.value),
-                      }))
-                    }
+                    onChange={e => setPlanForm(prev => ({ ...prev, premium: formatNumberInput(e.target.value) }))}
                     className={INPUT}
                   />
                 </Field>
-                <Field label="Installment count">
-                  <div className="flex flex-wrap gap-2">
-                    {(planForm.allow_five ? [1, 2, 3, 4, 5] : [1, 2, 3]).map(
-                      count => (
-                        <button
-                          key={count}
-                          type="button"
-                          onClick={() =>
-                            setPlanForm(prev => ({
-                              ...prev,
-                              installment_count: count,
-                              installments: regeneratePlanDates(
-                                count,
-                                prev.premium,
-                                vehicle.start_date,
-                                prev.allow_five,
-                                prev.installments,
-                              ),
-                            }))
-                          }
-                          className={`min-w-[3rem] rounded-xl border px-3 py-2 text-base font-bold ${
-                            planForm.installment_count === count
-                              ? 'border-primary-300 bg-primary-50 text-primary-800'
-                              : 'border-slate-200 bg-white text-slate-700'
-                          }`}
-                        >
-                          {count}
-                        </button>
-                      ),
-                    )}
+                <Field label="Number of Installments">
+                  <div className="flex gap-2">
+                    {(planForm.allow_five ? [1, 2, 3, 4, 5] : [1, 2, 3]).map(count => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() =>
+                          setPlanForm(prev => ({
+                            ...prev,
+                            installment_count: count,
+                            installments: regeneratePlanDates(
+                              count,
+                              prev.premium,
+                              vehicle.start_date,
+                              prev.allow_five,
+                              prev.installments,
+                              {
+                                keepPaid: false,
+                                rates: presetInstallmentRates(count, 'equal'),
+                              },
+                            ),
+                          }))
+                        }
+                        className={`flex-1 rounded-lg border py-2 text-sm font-bold transition-all ${
+                          planForm.installment_count === count
+                            ? 'border-primary-600 bg-primary-50 text-primary-700 shadow-xs'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        {count}
+                      </button>
+                    ))}
                   </div>
                 </Field>
               </div>
 
-              <label className="flex items-center gap-2 text-base text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={planForm.allow_five}
-                  onChange={e => {
-                    const allow = e.target.checked
-                    setPlanForm(prev => {
-                      const count =
-                        !allow && prev.installment_count > 3
-                          ? 3
-                          : prev.installment_count
-                      return {
-                        ...prev,
-                        allow_five: allow,
-                        installment_count: count,
-                        installments: regeneratePlanDates(
-                          count,
-                          prev.premium,
-                          vehicle.start_date,
-                          allow,
-                          prev.installments,
-                        ),
-                      }
-                    })
-                  }}
-                  className="h-4 w-4 rounded border-slate-300 text-primary-700"
-                />
-                Allow up to 5 installments
-              </label>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-b border-slate-200/60 py-3">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={planForm.allow_five}
+                    onChange={e => {
+                      const allow = e.target.checked
+                      setPlanForm(prev => {
+                        const count = !allow && prev.installment_count > 3 ? 3 : prev.installment_count
+                        return {
+                          ...prev,
+                          allow_five: allow,
+                          installment_count: count,
+                          installments: regeneratePlanDates(
+                            count,
+                            prev.premium,
+                            vehicle.start_date,
+                            allow,
+                            prev.installments,
+                            {
+                              keepPaid: false,
+                              rates: presetInstallmentRates(count, 'equal'),
+                            },
+                          ),
+                        }
+                      })
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  Enable up to 5 installments
+                </label>
 
-              <button
-                type="button"
-                className="text-sm font-bold text-primary-700"
-                onClick={() =>
-                  setPlanForm(prev => ({
-                    ...prev,
-                    installments: regeneratePlanDates(
-                      prev.installment_count,
-                      prev.premium,
-                      vehicle.start_date,
-                      prev.allow_five,
-                      prev.installments,
-                      false,
-                    ),
-                  }))
-                }
-              >
-                Regenerate due dates from policy start
-              </button>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-primary-600 hover:text-primary-700"
+                  onClick={() =>
+                    setPlanForm(prev => ({
+                      ...prev,
+                      installments: regeneratePlanDates(
+                        prev.installment_count,
+                        prev.premium,
+                        vehicle.start_date,
+                        prev.allow_five,
+                        prev.installments,
+                        { keepPaid: false },
+                      ),
+                    }))
+                  }
+                >
+                  Reset schedule from policy start
+                </button>
+              </div>
 
-              <div className="space-y-3">
-                {planForm.installments.map((item, index) => {
-                  const status = getInstallmentStatus({
-                    ...item,
-                    amount: parseNumberInput(item.amount),
-                  })
+              {(() => {
+                const presets =
+                  planForm.installment_count === 2
+                    ? [
+                        { id: 'equal', label: 'Equal (50/50)' },
+                        { id: '60-40', label: '60 / 40' },
+                        { id: '70-30', label: '70 / 30' },
+                      ]
+                    : planForm.installment_count === 3
+                      ? [
+                          { id: 'equal', label: 'Equal (33/33/33)' },
+                          { id: '40-30-30', label: '40 / 30 / 30' },
+                          { id: '50-30-20', label: '50 / 30 / 20' },
+                        ]
+                      : planForm.installment_count === 4
+                        ? [
+                            { id: 'equal', label: 'Equal' },
+                            { id: '40-20-20-20', label: '40 / 20 / 20 / 20' },
+                          ]
+                        : [{ id: 'equal', label: 'Equal' }]
+
+                const rateTotal = planForm.installments.reduce(
+                  (sum, item) => sum + (Number(parseNumberInput(item.rate)) || 0),
+                  0,
+                )
+                const amountTotal = planForm.installments.reduce(
+                  (sum, item) => sum + (Number(parseNumberInput(item.amount)) || 0),
+                  0,
+                )
+                const premiumNumber = Number(parseNumberInput(planForm.premium)) || 0
+                const ratesBalanced = Math.abs(rateTotal - 100) < 0.05
+                const amountsBalanced = premiumNumber > 0 && Math.abs(amountTotal - premiumNumber) < 0.5
+
+                return (
+                  <div className="space-y-3">
+                    {presets.length > 1 && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-slate-400 font-medium mr-1">Presets:</span>
+                        {presets.map(preset => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => applyPlanRatePreset(preset.id)}
+                            className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      {planForm.installments.map((item, index) => {
+                        const status = getInstallmentStatus({
+                          ...item,
+                          amount: parseNumberInput(item.amount),
+                        })
+
+                        return (
+                          <div
+                            key={item.number || index}
+                            className="grid grid-cols-1 items-end gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 sm:grid-cols-[2.5rem_minmax(5rem,0.8fr)_1fr_1.2fr_auto]"
+                          >
+                            <div className="flex items-center justify-center pb-2">
+                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600">
+                                #{index + 1}
+                              </span>
+                            </div>
+                            <Field label="Rate %">
+                              <div className="relative">
+                                <input
+                                  value={item.rate ?? ''}
+                                  onChange={e => updatePlanInstallment(index, 'rate', e.target.value)}
+                                  className={`${INPUT} pr-7 text-xs`}
+                                />
+                                <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs font-medium text-slate-400">
+                                  %
+                                </span>
+                              </div>
+                            </Field>
+                            <Field label="Amount">
+                              <input
+                                value={item.amount}
+                                onChange={e => updatePlanInstallment(index, 'amount', e.target.value)}
+                                className={`${INPUT} text-xs`}
+                              />
+                            </Field>
+                            <Field label="Due Date">
+                              <DateInput
+                                value={item.due_date}
+                                onChange={due_date => updatePlanInstallment(index, 'due_date', due_date)}
+                              />
+                            </Field>
+                            <div className="pb-1">
+                              <span className={`inline-block rounded-full border px-2.5 py-1 text-xs font-semibold ${status.badgeClass}`}>
+                                {status.label}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className={`rounded-lg p-2.5 text-xs font-medium ${ratesBalanced && amountsBalanced ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
+                      Rates total: {rateTotal.toFixed(2)}% {!ratesBalanced && '(must equal 100%)'} • Total amount: {formatKSh(amountTotal)} {!amountsBalanced && `(must equal ${formatKSh(premiumNumber)})`}
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          ) : schedule && installments.length > 0 ? (
+            <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white">
+              <div className="divide-y divide-slate-100">
+                {installments.map((installment, index) => {
+                  const status = getInstallmentStatus(installment)
 
                   return (
                     <div
-                      key={item.number || index}
-                      className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 sm:grid-cols-[auto_1fr_1fr_auto]"
+                      key={`${installment.number}-${installment.due_date}-${index}`}
+                      className="flex flex-wrap items-center justify-between gap-3 p-3.5 transition hover:bg-slate-50/50"
                     >
-                      <div className="flex items-center">
-                        <span className="rounded-full bg-white px-3 py-1.5 text-sm font-bold text-slate-700 ring-1 ring-slate-200">
-                          #{index + 1}
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600">
+                          #{installment.number}
                         </span>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">
+                            Due {formatDate(installment.due_date)}
+                          </p>
+                          {status.paidAmount > 0 && status.remaining > 0 && (
+                            <p className="text-xs text-slate-400">
+                              {formatKSh(status.paidAmount)} paid • {formatKSh(status.remaining)} remaining
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <Field label="Amount">
-                        <input
-                          value={item.amount}
-                          onChange={e =>
-                            setPlanForm(prev => ({
-                              ...prev,
-                              installments: prev.installments.map((row, i) =>
-                                i === index
-                                  ? {
-                                      ...row,
-                                      amount: formatNumberInput(e.target.value),
-                                    }
-                                  : row,
-                              ),
-                            }))
-                          }
-                          className={INPUT}
-                        />
-                      </Field>
-                      <Field label="Due date">
-                        <input
-                          type="date"
-                          value={item.due_date}
-                          onChange={e =>
-                            setPlanForm(prev => ({
-                              ...prev,
-                              installments: prev.installments.map((row, i) =>
-                                i === index
-                                  ? { ...row, due_date: e.target.value }
-                                  : row,
-                              ),
-                            }))
-                          }
-                          className={INPUT}
-                        />
-                      </Field>
-                      <div className="flex items-end">
-                        <span
-                          className={`rounded-full border px-2.5 py-1 text-sm font-bold ${status.badgeClass}`}
-                        >
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-slate-900">
+                          {formatKSh(installment.amount)}
+                        </span>
+                        <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${status.badgeClass}`}>
                           {status.label}
                         </span>
                       </div>
@@ -1285,92 +1419,35 @@ function VehicleCard({
                 })}
               </div>
             </div>
-          ) : schedule && installments.length > 0 ? (
-            <div className="mt-1">
-              {installments.map((installment, index) => {
-                const status = getInstallmentStatus(installment)
-                const isLast = index === installments.length - 1
-
-                return (
-                  <div
-                    key={`${installment.number}-${installment.due_date}-${index}`}
-                    className="relative flex gap-3"
-                  >
-                    <div className="flex w-4 shrink-0 flex-col items-center">
-                      <span
-                        className={`mt-1.5 h-3 w-3 shrink-0 rounded-full ring-4 ${status.dotClass}`}
-                      />
-                      {!isLast && (
-                        <span className={`my-1 w-0.5 grow ${status.lineClass}`} />
-                      )}
-                    </div>
-
-                    <div className={`min-w-0 flex-1 ${isLast ? 'pb-0' : 'pb-4'}`}>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <p className="text-base font-bold text-slate-900">
-                              Installment {installment.number}
-                            </p>
-                            <p className="mt-1 text-sm text-slate-500">
-                              Due {formatDate(installment.due_date)}
-                            </p>
-                          </div>
-                          <span
-                            className={`w-fit rounded-full border px-2.5 py-1 text-sm font-bold ${status.badgeClass}`}
-                          >
-                            {status.label}
-                          </span>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-3 gap-3">
-                          <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                              Expected
-                            </p>
-                            <p className="mt-1 text-base font-bold text-slate-800">
-                              {formatKSh(installment.amount)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                              Received
-                            </p>
-                            <p className="mt-1 text-base font-bold text-emerald-700">
-                              {formatKSh(status.paidAmount)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                              Remaining
-                            </p>
-                            <p className="mt-1 text-base font-bold text-amber-700">
-                              {formatKSh(status.remaining)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3.5 py-4">
-              <p className="text-base font-semibold text-slate-700">
-                No payment schedule has been created.
-              </p>
-              <p className="mt-1 text-sm text-slate-500">
-                Recorded premium: {formatKSh(vehicle.premium ?? 0)}.
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
+              <p className="text-xs font-medium text-slate-500">
+                No payment schedule active • Base Premium: {formatKSh(vehicle.premium ?? 0)}
               </p>
             </div>
           )}
+        </section>
 
-          <NotesBlock
-            title="Payment notes"
-            value={vehicle.payment_notes}
-            onSave={text => onUpdateVehicle({ payment_notes: text.trim() || null })}
-          />
+        {/* Notes Section */}
+        <section className="border-t border-slate-100 pt-5 space-y-3">
+          <Subheading>Policy Notes</Subheading>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <NotesBlock
+              title="Vehicle Notes"
+              value={vehicle.vehicle_notes}
+              onSave={text => onUpdateVehicle({ vehicle_notes: text.trim() || null })}
+            />
+            <NotesBlock
+              title="Cover Notes"
+              value={vehicle.cover_notes}
+              onSave={text => onUpdateVehicle({ cover_notes: text.trim() || null })}
+            />
+            <NotesBlock
+              title="Payment Notes"
+              value={vehicle.payment_notes}
+              onSave={text => onUpdateVehicle({ payment_notes: text.trim() || null })}
+            />
+          </div>
         </section>
       </div>
     </article>
@@ -1407,25 +1484,29 @@ export default function ClientDetailPage() {
   )
 
   if (loading) {
-    return <LottieLoader label="Loading client..." />
+    return <LottieLoader label="Loading client details..." />
   }
 
   if (!client) {
     return (
       <PageShell>
-        <Link
-          to="/clients"
-          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-bold text-primary-700 transition hover:border-primary-200 hover:bg-primary-50"
-        >
-          ← Back to portfolio
-        </Link>
-
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-12 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-slate-800">Client not found</h1>
-          <p className="mt-2 text-base text-slate-500">
-            This client may have been removed or the link may be incorrect.
-          </p>
+        <div className="mb-4">
+          <Link
+            to="/clients"
+            className="inline-flex items-center text-xs font-semibold text-slate-500 hover:text-slate-700"
+          >
+            ← Back to Clients
+          </Link>
         </div>
+        <EmptyState
+          icon={
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          }
+        >
+          Client record not found. It may have been deleted or moved.
+        </EmptyState>
       </PageShell>
     )
   }
@@ -1455,11 +1536,7 @@ export default function ClientDetailPage() {
   const nextRenewal = vehicles
     .filter(vehicle => vehicle.expiry_date)
     .slice()
-    .sort((a, b) =>
-      String(a.expiry_date).localeCompare(String(b.expiry_date)),
-    )[0]
-
-  const portfolioProgress = getProgressPercentage(totalPaid, totalPremium)
+    .sort((a, b) => String(a.expiry_date).localeCompare(String(b.expiry_date)))[0]
 
   const startInsuredEdit = () => {
     setInsuredForm({
@@ -1498,391 +1575,299 @@ export default function ClientDetailPage() {
 
   return (
     <PageShell>
-      <div>
-        <Link
-          to="/clients"
-          className="inline-flex items-center text-sm font-semibold text-primary-600 transition hover:text-primary-700"
-        >
-          ← Back to portfolio
-        </Link>
-      </div>
+      <div className="space-y-6">
+        {/* Navigation Breadcrumb */}
+        <div>
+          <Link
+            to="/clients"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-slate-800"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Client Portfolio
+          </Link>
+        </div>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
-        <div className="flex flex-col lg:flex-row">
-          <aside className="flex flex-col items-center bg-slate-50 px-6 py-8 text-center lg:w-[280px] lg:shrink-0 lg:border-r lg:border-slate-100 xl:w-[300px]">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-200 text-2xl font-bold text-slate-600 ring-4 ring-white">
-              {getInitials(client.name)}
-            </div>
-
-            <h1 className="mt-5 break-words text-xl font-bold tracking-tight text-slate-900">
-              {client.name}
-            </h1>
-            <p className="mt-1.5 text-sm capitalize text-slate-500">
-              {vehicles.length}{' '}
-              {vehicles.length === 1 ? 'policy' : 'policies'}
-              {client.status
-                ? ` · ${String(client.status).replace(/_/g, ' ')}`
-                : ''}
-            </p>
-            {client.created_at && (
-              <p className="mt-1 text-xs text-slate-400">
-                Client since {formatDate(client.created_at)}
-              </p>
-            )}
-
-            <div className="mt-4">
-              <StatusBadge status={client.status} />
-            </div>
-
-            <div className="mt-6 w-full space-y-2.5">
-              <Link
-                to="/payments"
-                className="flex w-full items-center justify-center rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700"
-              >
-                Log payment
-              </Link>
-              {client.phone && (
-                <a
-                  href={`tel:${client.phone}`}
-                  className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-primary-200 hover:bg-primary-50"
-                >
-                  Call client
-                </a>
-              )}
-            </div>
-
-            <div className="mt-6 w-full">
-              <div className="flex items-center justify-between gap-2 text-xs font-medium text-slate-500">
-                <span>Paid</span>
-                <span>{Math.round(portfolioProgress)}%</span>
-              </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-200">
-                <div
-                  className="h-full rounded-full bg-primary-500 transition-all duration-500"
-                  style={{ width: `${portfolioProgress}%` }}
-                />
-              </div>
-            </div>
-          </aside>
-
-          <div className="min-w-0 flex-1 px-5 py-6 sm:px-8 sm:py-7">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-400">Client details</p>
-              <SectionEditBar
-                editing={editingInsured}
-                onEdit={startInsuredEdit}
-                onCancel={() => setEditingInsured(false)}
-                onSave={saveInsured}
-                saving={savingInsured}
-              />
-            </div>
-
-            {editingInsured ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Name" required>
-                  <input
-                    value={insuredForm.name}
-                    onChange={e =>
-                      setInsuredForm(prev => ({ ...prev, name: e.target.value }))
-                    }
-                    className={INPUT}
-                  />
-                </Field>
-                <Field label="Phone" required>
-                  <input
-                    value={insuredForm.phone}
-                    onChange={e =>
-                      setInsuredForm(prev => ({ ...prev, phone: e.target.value }))
-                    }
-                    className={INPUT}
-                  />
-                </Field>
-                <Field label="National ID">
-                  <input
-                    value={insuredForm.id_number}
-                    onChange={e =>
-                      setInsuredForm(prev => ({
-                        ...prev,
-                        id_number: e.target.value,
-                      }))
-                    }
-                    className={INPUT}
-                  />
-                </Field>
-                <Field label="Email">
-                  <input
-                    type="email"
-                    value={insuredForm.email}
-                    onChange={e =>
-                      setInsuredForm(prev => ({ ...prev, email: e.target.value }))
-                    }
-                    className={INPUT}
-                  />
-                </Field>
-                <Field label="Address" className="sm:col-span-2">
-                  <input
-                    value={insuredForm.address}
-                    onChange={e =>
-                      setInsuredForm(prev => ({
-                        ...prev,
-                        address: e.target.value,
-                      }))
-                    }
-                    className={INPUT}
-                  />
-                </Field>
-              </div>
-            ) : (
-              <>
-                <ProfileSection title="Contact information">
-                  <dl className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-                    <DetailItem
-                      label="Email"
-                      value={client.email || 'Not provided'}
-                    />
-                    <DetailItem
-                      label="Phone number"
-                      value={client.phone || 'Not provided'}
-                    />
-                    <DetailItem
-                      label="Address"
-                      value={client.address || 'Not provided'}
-                    />
-                  </dl>
-                </ProfileSection>
-
-                <ProfileSection title="Personal information">
-                  <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <DetailItem
-                      label="National ID"
-                      value={client.id_number || 'Not provided'}
-                    />
-                    <DetailItem
-                      label="Outstanding balance"
-                      value={formatKSh(totalOutstanding)}
-                    />
-                  </dl>
-                </ProfileSection>
-
-                <ProfileSection title="Policies">
-                  {vehicles.length === 0 ? (
-                    <p className="text-sm text-slate-400">No policies yet.</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {vehicles.map(vehicle => (
-                        <span
-                          key={vehicle.id}
-                          className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700"
-                        >
-                          {vehicle.registration ||
-                            vehicle.chassis ||
-                            `${vehicle.make} ${vehicle.model}`.trim() ||
-                            'Vehicle'}
-                        </span>
-                      ))}
+        {/* TOP SECTION: Client Details & Policy Overview Side-by-Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Client Details Card */}
+          <section className="lg:col-span-6 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs flex flex-col justify-between">
+            <div className="p-5 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 text-lg font-bold text-slate-700 shadow-inner">
+                    {getInitials(client.name)}
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                        {client.name}
+                      </h1>
+                      <StatusBadge status={client.status} />
                     </div>
-                  )}
-                </ProfileSection>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {vehicles.length} {vehicles.length === 1 ? 'active policy' : 'active policies'}
+                      {client.created_at && ` • Since ${formatDate(client.created_at)}`}
+                    </p>
+                  </div>
+                </div>
 
-                <div className="pt-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SectionEditBar
+                    editing={editingInsured}
+                    onEdit={startInsuredEdit}
+                    onCancel={() => setEditingInsured(false)}
+                    onSave={saveInsured}
+                    saving={savingInsured}
+                  />
+                  {client.phone && (
+                    <a href={`tel:${client.phone}`} className={BTN_SECONDARY}>
+                      Call
+                    </a>
+                  )}
+                  <Link to="/payments" className={BTN_PRIMARY}>
+                    Log Payment
+                  </Link>
+                </div>
+              </div>
+
+              {editingInsured ? (
+                <div className="mt-5 border-t border-slate-100 pt-4 space-y-3">
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Client Profile</h5>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Field label="Full Name" required>
+                      <input
+                        value={insuredForm.name}
+                        onChange={e => setInsuredForm(prev => ({ ...prev, name: e.target.value }))}
+                        className={INPUT}
+                      />
+                    </Field>
+                    <Field label="Phone Number" required>
+                      <input
+                        value={insuredForm.phone}
+                        onChange={e => setInsuredForm(prev => ({ ...prev, phone: e.target.value }))}
+                        className={INPUT}
+                      />
+                    </Field>
+                    <Field label="National ID / Passport">
+                      <input
+                        value={insuredForm.id_number}
+                        onChange={e => setInsuredForm(prev => ({ ...prev, id_number: e.target.value }))}
+                        className={INPUT}
+                      />
+                    </Field>
+                    <Field label="Email Address">
+                      <input
+                        type="email"
+                        value={insuredForm.email}
+                        onChange={e => setInsuredForm(prev => ({ ...prev, email: e.target.value }))}
+                        className={INPUT}
+                      />
+                    </Field>
+                    <Field label="Physical / Postal Address" className="sm:col-span-2">
+                      <input
+                        value={insuredForm.address}
+                        onChange={e => setInsuredForm(prev => ({ ...prev, address: e.target.value }))}
+                        className={INPUT}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 border-t border-slate-100 pt-4 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-medium text-slate-600">
+                    {client.phone && (
+                      <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Phone</span>
+                        <span className="font-semibold text-slate-800">{client.phone}</span>
+                      </div>
+                    )}
+                    {client.email && (
+                      <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Email</span>
+                        <span className="font-semibold text-slate-800 truncate block">{client.email}</span>
+                      </div>
+                    )}
+                    {client.id_number && (
+                      <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">National ID</span>
+                        <span className="font-semibold text-slate-800">{client.id_number}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {client.address && (
+                    <DetailItem label="Address" value={client.address} />
+                  )}
+
                   <NotesBlock
-                    title="General client notes"
+                    title="Client Notes"
                     value={client.notes}
-                    onSave={text =>
-                      updateClient(client.id, { notes: text.trim() || null })
-                    }
+                    onSave={text => updateClient(client.id, { notes: text.trim() || null })}
                   />
                 </div>
-              </>
+              )}
+            </div>
+          </section>
+
+          {/* Policy Overview Top Component */}
+          <section className="lg:col-span-6">
+            <TopPolicyOverviewCard
+              vehicles={vehicles}
+              onUpdateVehicle={updateVehicle}
+            />
+          </section>
+        </div>
+
+        {/* Portfolio Key Financial Metrics */}
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Total Premium
+            </p>
+            <p className="mt-1.5 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              {formatKSh(totalPremium)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Total Paid
+            </p>
+            <p className="mt-1.5 text-xl font-bold tracking-tight text-emerald-600 sm:text-2xl">
+              {formatKSh(totalPaid)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Outstanding
+            </p>
+            <p className={`mt-1.5 text-xl font-bold tracking-tight sm:text-2xl ${totalOutstanding <= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+              {formatKSh(totalOutstanding)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Active Policies
+            </p>
+            <p className="mt-1.5 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              {vehicles.length}
+            </p>
+            {nextRenewal && (
+              <p className="mt-1 text-xs text-slate-400 truncate">
+                Next renewal: {formatShortDate(nextRenewal.expiry_date)}
+              </p>
             )}
           </div>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3">
-        <SummaryCard
-          label="Total premium"
-          value={formatKSh(totalPremium)}
-          caption="Across all policies"
-          className="border-blue-100"
-          valueClassName="text-blue-800"
-        />
-        <SummaryCard
-          label="Amount paid"
-          value={formatKSh(totalPaid)}
-          caption="Payments received"
-          className="border-emerald-100"
-          valueClassName="text-emerald-700"
-        />
-        <SummaryCard
-          label="Outstanding"
-          value={formatKSh(totalOutstanding)}
-          caption={
-            totalOutstanding <= 0
-              ? 'No balance remaining'
-              : 'Still expected from client'
-          }
-          className="border-amber-100"
-          valueClassName={
-            totalOutstanding <= 0 ? 'text-emerald-700' : 'text-amber-700'
-          }
-        />
-        <SummaryCard
-          label="Active policies"
-          value={vehicles.length}
-          caption={
-            nextRenewal
-              ? `Next renewal ${formatShortDate(nextRenewal.expiry_date)}`
-              : 'No renewal date recorded'
-          }
-          className="border-violet-100"
-          valueClassName="text-violet-700"
-        />
-      </section>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
-        <section className="space-y-3 xl:col-span-3">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div className="min-w-0">
-              <p className={EYEBROW}>Portfolio</p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
-                Vehicles and policies
-              </h2>
-              <p className="mt-1 text-base text-slate-500">
-                Edit cover, dates, premium, and installment schedules anytime.
-              </p>
-            </div>
-            <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-600">
-              {vehicles.length}{' '}
-              {vehicles.length === 1 ? 'vehicle' : 'vehicles'}
-            </span>
-          </div>
-
-          {vehicles.length === 0 ? (
-            <EmptyState>No vehicles have been added for this client.</EmptyState>
-          ) : (
-            <div className="space-y-4">
-              {vehicles.map(vehicle => (
-                <VehicleCard
-                  key={vehicle.id}
-                  vehicle={vehicle}
-                  onUpdateVehicle={updates => updateVehicle(vehicle.id, updates)}
-                  onUpdateSchedule={updates => {
-                    const schedule = getVehicleSchedules(vehicle)[0]
-                    if (!schedule) return Promise.resolve()
-                    return updatePaymentSchedule(schedule.id, updates)
-                  }}
-                  onCreateSchedule={payload =>
-                    createPaymentSchedule(vehicle.id, payload)
-                  }
-                />
-              ))}
-            </div>
-          )}
         </section>
 
-        <section className="space-y-3 xl:col-span-2">
-          <div className="flex flex-col gap-3">
-            <div className="min-w-0">
-              <p className={EYEBROW}>Transactions</p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
-                Payment history
+        {/* Main Content: Vehicles & Schedules vs Payment History */}
+        <div id="vehicles-section" className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+          {/* Vehicles & Installments List */}
+          <section className="space-y-4 xl:col-span-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900">
+                Payment Schedules & Configurations
               </h2>
-              <p className="mt-1 text-base text-slate-500">
-                All payments recorded for this client.
-              </p>
+              <span className="text-xs font-semibold text-slate-400">
+                {vehicles.length} {vehicles.length === 1 ? 'vehicle' : 'vehicles'}
+              </span>
             </div>
 
-            <Link
-              to="/payments"
-              className="inline-flex w-full items-center justify-center rounded-xl bg-primary-700 px-4 py-3 text-base font-bold text-white shadow-sm transition hover:bg-primary-600"
-            >
-              Log payment
-            </Link>
-          </div>
+            {vehicles.length === 0 ? (
+              <EmptyState
+                icon={
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                }
+              >
+                No vehicles have been added for this client yet.
+              </EmptyState>
+            ) : (
+              <div className="space-y-5">
+                {vehicles.map(vehicle => (
+                  <VehicleCard
+                    key={vehicle.id}
+                    vehicle={vehicle}
+                    onUpdateVehicle={updates => updateVehicle(vehicle.id, updates)}
+                    onUpdateSchedule={updates => {
+                      const schedule = getVehicleSchedules(vehicle)[0]
+                      if (!schedule) return Promise.resolve()
+                      return updatePaymentSchedule(schedule.id, updates)
+                    }}
+                    onCreateSchedule={payload => createPaymentSchedule(vehicle.id, payload)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
-          {paymentsLoading ? (
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-4 text-base text-slate-400">
-              Loading payments...
-            </div>
-          ) : clientPayments.length === 0 ? (
-            <EmptyState>
-              No payments have been logged for this client.
-            </EmptyState>
-          ) : (
-            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
-              <div className="divide-y divide-slate-100">
-                {clientPayments.map(payment => {
-                  const vehicle = vehicles.find(
-                    item => item.id === payment.vehicle_id,
-                  )
-                  const methodStyles = getPaymentMethodStyles(payment.method)
+          {/* Payment Log History Sidebar */}
+          <section className="space-y-4 xl:col-span-2">
+            <h2 className="text-base font-bold text-slate-900">
+              Recent Transactions
+            </h2>
 
-                  return (
-                    <div
-                      key={payment.id}
-                      className="space-y-3 px-4 py-4 transition hover:bg-slate-50/70"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-sm font-bold ${methodStyles.badge}`}
-                          >
-                            <span
-                              className={`h-2 w-2 rounded-full ${methodStyles.dot}`}
-                            />
-                            {METHOD_LABELS[payment.method] ??
-                              payment.method ??
-                              'Payment'}
-                          </span>
-                          <span className="text-sm text-slate-400">
-                            {formatDate(payment.date)}
-                          </span>
-                        </div>
+            {paymentsLoading ? (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-6 text-center text-xs text-slate-400">
+                Loading payment records...
+              </div>
+            ) : clientPayments.length === 0 ? (
+              <EmptyState
+                icon={
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+              >
+                No payment activity recorded for this client.
+              </EmptyState>
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+                <div className="divide-y divide-slate-100">
+                  {clientPayments.map(payment => {
+                    const vehicle = vehicles.find(item => item.id === payment.vehicle_id)
+                    const methodStyles = getPaymentMethodStyles(payment.method)
 
-                        {payment.reference && (
-                          <p className="mt-2 break-all text-base font-semibold text-slate-800">
-                            Ref: {payment.reference}
-                          </p>
-                        )}
-
-                        {payment.notes && (
-                          <p className="mt-1 break-words text-sm leading-5 text-slate-500">
-                            {payment.notes}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-end justify-between gap-3 border-t border-slate-50 pt-3">
+                    return (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between gap-3 p-4 transition hover:bg-slate-50/60"
+                      >
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-400">
-                            Vehicle
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${methodStyles.badge}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${methodStyles.dot}`} />
+                              {METHOD_LABELS[payment.method] ?? payment.method ?? 'Payment'}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {formatDate(payment.date)}
+                            </span>
+                          </div>
+                          <p className="mt-1 truncate text-xs font-semibold text-slate-700">
+                            {vehicle?.registration || 'General Policy Payment'}
+                            {vehicle ? ` (${vehicle.make} ${vehicle.model})` : ''}
                           </p>
-                          <p className="mt-1 break-words text-base font-bold text-slate-800">
-                            {vehicle?.registration || 'General client payment'}
-                          </p>
-                          {vehicle && (
-                            <p className="mt-0.5 break-words text-sm text-slate-500">
-                              {vehicle.make} {vehicle.model}
+                          {payment.reference && (
+                            <p className="mt-0.5 font-mono text-xs text-slate-400">
+                              Ref: {payment.reference}
                             </p>
                           )}
                         </div>
-                        <div className="shrink-0 text-right">
-                          <p className="text-sm font-medium text-slate-400">
-                            Amount
-                          </p>
-                          <p className="mt-1 text-xl font-bold text-emerald-700">
-                            {formatKSh(payment.amount)}
-                          </p>
+                        <div className="text-right shrink-0">
+                          <span className="text-sm font-bold text-emerald-600">
+                            +{formatKSh(payment.amount)}
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        </div>
       </div>
     </PageShell>
   )

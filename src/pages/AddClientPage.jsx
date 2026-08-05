@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useClients } from '../hooks/useClients'
-import { buildInstallmentSchedule, formatKSh } from '../utils/calculator'
-import { formatNumberInput, parseNumberInput } from '../utils/numberInput'
+import {
+  amountsFromRates,
+  buildInstallmentSchedule,
+  formatKSh,
+  presetInstallmentRates,
+  rateFromAmount,
+} from '../utils/calculator'
+import { formatNumberInput, parseNumberInput, premiumFromRate } from '../utils/numberInput'
+import { defaultExpiryDate, formatDisplayDate } from '../utils/policyDates'
+import DateInput from '../components/ui/DateInput'
 import { toast } from '../store/toastStore'
 import { INSURER_OPTIONS } from '../constants/insurers'
 import { CAR_MAKE_OPTIONS, getCarModelOptions } from '../constants/carMakes'
@@ -27,20 +35,14 @@ const USE_TYPES = [
 const STEPS = [
   { id: 'insured', title: 'Insured', caption: 'Enter the insured person’s details. You can add vehicle and cover information in the next steps.' },
   { id: 'vehicle', title: 'Vehicle', caption: 'Identify the vehicle with registration or chassis, then add make, model, and use.' },
-  { id: 'cover', title: 'Cover', caption: 'Set the insurer, policy type, sum insured, and total premium for this cover.' },
+  { id: 'cover', title: 'Cover', caption: 'Set the insurer, policy type, and total premium. Sum insured comes from the vehicle value.' },
   { id: 'dates', title: 'Dates', caption: 'Confirm the policy start and expiry dates for this cover period.' },
-  { id: 'payment', title: 'Payment', caption: 'Choose how many installments and adjust amounts or due dates if needed.' },
-  { id: 'review', title: 'Review', caption: 'Check everything looks right, then save the client and policy.' },
+  { id: 'payment', title: 'Payment', caption: 'Choose installments, set % split (e.g. 40 / 30 / 30), and adjust due dates if needed.' },
+  { id: 'review', title: 'Review', caption: 'Confirm the details below, then save.' },
 ]
 
 const DEFAULT_INSTALLMENT_OPTIONS = [1, 2, 3]
 const EXTENDED_INSTALLMENT_OPTIONS = [1, 2, 3, 4, 5]
-
-function defaultExpiryDate(startDate) {
-  const date = new Date(startDate)
-  date.setFullYear(date.getFullYear() + 1)
-  return date.toISOString().slice(0, 10)
-}
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -66,7 +68,7 @@ const INITIAL_FORM = {
   insurer_other: '',
   policy_number: '',
   policy_type: 'comprehensive',
-  sum_insured: '',
+  premium_rate: '',
   premium: '',
   cover_notes: '',
   start_date: today,
@@ -147,14 +149,30 @@ function StepProgress({ current }) {
   )
 }
 
-function ReviewRow({ label, value }) {
+function ReviewFact({ label, value, className = '' }) {
+  if (value == null || value === '') return null
   return (
-    <div className="flex flex-col gap-0.5 border-b border-slate-100 py-2.5 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-      <dt className="text-sm font-medium text-slate-500">{label}</dt>
-      <dd className="break-words text-base font-semibold text-slate-900 sm:text-right">
-        {value || '—'}
+    <div className={`min-w-0 ${className}`}>
+      <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+        {label}
+      </dt>
+      <dd className="mt-1 break-words text-base font-semibold text-slate-900">
+        {value}
       </dd>
     </div>
+  )
+}
+
+function ReviewSection({ title, children, className = '' }) {
+  return (
+    <section
+      className={`rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 ${className}`}
+    >
+      <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+        {title}
+      </h3>
+      <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</dl>
+    </section>
   )
 }
 
@@ -192,7 +210,43 @@ export default function AddClientPage() {
     if (key === 'start_date') setDatesTouched(false)
   }
 
-  const setAmount = (key, value) => set(key, formatNumberInput(value))
+  const setVehicleValue = value => {
+    const formatted = formatNumberInput(value)
+    setForm(prev => {
+      const next = {
+        ...prev,
+        vehicle_value: formatted,
+      }
+      const calculated = premiumFromRate(formatted, prev.premium_rate)
+      if (calculated != null) {
+        next.premium = calculated
+        next.installment_overrides = []
+      }
+      return next
+    })
+  }
+
+  const setPremiumRate = value => {
+    const formatted = formatNumberInput(value)
+    setForm(prev => {
+      const next = { ...prev, premium_rate: formatted }
+      const calculated = premiumFromRate(prev.vehicle_value, formatted)
+      if (calculated != null) {
+        next.premium = calculated
+        next.installment_overrides = []
+      }
+      return next
+    })
+  }
+
+  const setPremiumAmount = value => {
+    setForm(prev => ({
+      ...prev,
+      premium: formatNumberInput(value),
+      premium_rate: '',
+      installment_overrides: [],
+    }))
+  }
 
   const modelOptions = getCarModelOptions(form.make)
   const installmentOptions = form.allow_five_installments
@@ -239,34 +293,131 @@ export default function AddClientPage() {
     setForm(prev => ({
       ...prev,
       installment_overrides: draftSchedule.installments.map(item => ({
-        amount: String(item.amount),
+        amount: formatNumberInput(String(item.amount)),
+        rate: formatNumberInput(String(item.rate)),
         due_date: item.due_date,
       })),
     }))
   }, [draftSchedule, form.installment_overrides.length])
 
+  const getInstallmentRows = (prev = form) => {
+    if (prev.installment_overrides.length > 0) return prev.installment_overrides
+    return (draftSchedule?.installments ?? []).map(item => ({
+      amount: formatNumberInput(String(item.amount)),
+      rate: formatNumberInput(String(item.rate)),
+      due_date: item.due_date,
+    }))
+  }
+
+  const applyInstallmentRates = (rates, dueDates) => {
+    const amounts = amountsFromRates(premiumNumber, rates)
+    return rates.map((rate, index) => ({
+      rate: formatNumberInput(String(rate)),
+      amount: formatNumberInput(String(amounts[index] ?? 0)),
+      due_date:
+        dueDates?.[index] ||
+        draftSchedule?.installments?.[index]?.due_date ||
+        form.start_date,
+    }))
+  }
+
+  const applyRatePreset = preset => {
+    const rates = presetInstallmentRates(form.installment_count, preset)
+    setForm(prev => ({
+      ...prev,
+      installment_overrides: applyInstallmentRates(
+        rates,
+        getInstallmentRows(prev).map(item => item.due_date),
+      ),
+    }))
+  }
+
   const updateInstallment = (index, key, value) => {
     setForm(prev => {
-      const base =
-        prev.installment_overrides.length > 0
-          ? prev.installment_overrides
-          : (draftSchedule?.installments ?? []).map(item => ({
-              amount: String(item.amount),
-              due_date: item.due_date,
-            }))
+      const base = getInstallmentRows(prev)
 
-      const next = base.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              [key]:
-                key === 'amount' ? formatNumberInput(value) : value,
-            }
-          : item,
-      )
-      return { ...prev, installment_overrides: next }
+      if (key === 'due_date') {
+        return {
+          ...prev,
+          installment_overrides: base.map((item, i) =>
+            i === index ? { ...item, due_date: value } : item,
+          ),
+        }
+      }
+
+      if (key === 'rate') {
+        const rate = formatNumberInput(value)
+        const rates = base.map((row, i) =>
+          i === index
+            ? Number(parseNumberInput(rate)) || 0
+            : Number(parseNumberInput(row.rate)) || 0,
+        )
+        const amounts = amountsFromRates(premiumNumber, rates)
+
+        return {
+          ...prev,
+          installment_overrides: base.map((item, i) => ({
+            ...item,
+            rate: i === index ? rate : item.rate,
+            amount: formatNumberInput(String(amounts[i] ?? 0)),
+          })),
+        }
+      }
+
+      const amount = formatNumberInput(value)
+      return {
+        ...prev,
+        installment_overrides: base.map((item, i) =>
+          i === index
+            ? {
+                ...item,
+                amount,
+                rate: formatNumberInput(
+                  String(
+                    rateFromAmount(
+                      premiumNumber,
+                      parseNumberInput(amount) || 0,
+                    ),
+                  ),
+                ),
+              }
+            : item,
+        ),
+      }
     })
   }
+
+  const rateTotal = form.installment_overrides.reduce(
+    (sum, item) => sum + (Number(parseNumberInput(item.rate)) || 0),
+    0,
+  )
+  const amountTotal = form.installment_overrides.reduce(
+    (sum, item) => sum + (Number(parseNumberInput(item.amount)) || 0),
+    0,
+  )
+  const ratesBalanced = Math.abs(rateTotal - 100) < 0.05
+  const amountsBalanced =
+    premiumNumber > 0 && Math.abs(amountTotal - premiumNumber) < 0.5
+
+  const installmentPresets =
+    form.installment_count === 2
+      ? [
+          { id: 'equal', label: 'Equal' },
+          { id: '60-40', label: '60 / 40' },
+          { id: '70-30', label: '70 / 30' },
+        ]
+      : form.installment_count === 3
+        ? [
+            { id: 'equal', label: 'Equal' },
+            { id: '40-30-30', label: '40 / 30 / 30' },
+            { id: '50-30-20', label: '50 / 30 / 20' },
+          ]
+        : form.installment_count === 4
+          ? [
+              { id: 'equal', label: 'Equal' },
+              { id: '40-20-20-20', label: '40 / 20 / 20 / 20' },
+            ]
+          : [{ id: 'equal', label: 'Equal' }]
 
   const validateStep = currentStep => {
     if (currentStep === 0) {
@@ -296,6 +447,12 @@ export default function AddClientPage() {
     if (currentStep === 4) {
       if (!draftSchedule?.installments?.length) {
         return 'Could not build an installment schedule. Check premium and start date.'
+      }
+      if (form.installment_overrides.length > 0 && !ratesBalanced) {
+        return 'Installment rates must add up to 100%.'
+      }
+      if (form.installment_overrides.length > 0 && !amountsBalanced) {
+        return 'Installment amounts must add up to the total premium.'
       }
     }
 
@@ -374,7 +531,7 @@ export default function AddClientPage() {
           policy_type: form.policy_type,
           start_date: form.start_date,
           expiry_date: form.expiry_date,
-          sum_insured: parseNumberInput(form.sum_insured),
+          sum_insured: parseNumberInput(form.vehicle_value),
           premium: parseNumberInput(form.premium),
           vehicle_notes: form.vehicle_notes,
           cover_notes: form.cover_notes,
@@ -602,7 +759,7 @@ export default function AddClientPage() {
                 inputMode="decimal"
                 placeholder="0"
                 value={form.vehicle_value}
-                onChange={e => setAmount('vehicle_value', e.target.value)}
+                onChange={e => setVehicleValue(e.target.value)}
                 className={INPUT}
               />
             </Field>
@@ -677,23 +834,52 @@ export default function AddClientPage() {
                 />
               </Field>
             )}
-            <Field label="Total premium" required>
+            <Field
+              label="Sum insured"
+              hint="Taken from vehicle value"
+            >
+              <input
+                type="text"
+                readOnly
+                value={form.vehicle_value || '—'}
+                className={`${INPUT} bg-slate-50 text-slate-600`}
+                tabIndex={-1}
+              />
+            </Field>
+            <Field
+              label="Premium rate"
+              hint="Optional. Enter % of sum insured to calculate total premium."
+            >
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="e.g. 4.5"
+                  value={form.premium_rate}
+                  onChange={e => setPremiumRate(e.target.value)}
+                  className={`${INPUT} pr-10`}
+                />
+                <span className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-sm font-medium text-slate-400">
+                  %
+                </span>
+              </div>
+            </Field>
+            <Field
+              label="Total premium"
+              required
+              hint={
+                form.premium_rate
+                  ? 'Calculated from sum insured × rate. Edit to override.'
+                  : undefined
+              }
+              className="sm:col-span-2"
+            >
               <input
                 type="text"
                 inputMode="decimal"
                 placeholder="0"
                 value={form.premium}
-                onChange={e => setAmount('premium', e.target.value)}
-                className={INPUT}
-              />
-            </Field>
-            <Field label="Sum insured">
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="0"
-                value={form.sum_insured}
-                onChange={e => setAmount('sum_insured', e.target.value)}
+                onChange={e => setPremiumAmount(e.target.value)}
                 className={INPUT}
               />
             </Field>
@@ -716,28 +902,28 @@ export default function AddClientPage() {
               required
               hint="Installment due dates are generated from this date"
             >
-              <input
-                type="date"
+              <DateInput
                 value={form.start_date}
-                onChange={e => set('start_date', e.target.value)}
-                className={INPUT}
+                onChange={value => set('start_date', value)}
               />
             </Field>
-            <Field label="Annual renewal / expiry" required>
-              <input
-                type="date"
+            <Field
+              label="Annual renewal / expiry"
+              required
+              hint="Defaults to one day before the start anniversary (e.g. start 8th → renew 7th)"
+            >
+              <DateInput
                 value={form.expiry_date}
-                onChange={e => {
+                onChange={value => {
                   setDatesTouched(true)
-                  set('expiry_date', e.target.value)
+                  set('expiry_date', value)
                 }}
-                className={INPUT}
               />
             </Field>
             {!datesTouched && (
               <p className="sm:col-span-2 text-sm text-slate-500">
-                Expiry defaults to one year after the start date and stays
-                editable.
+                Expiry defaults to one day before the start anniversary (e.g.
+                start 8th → renew 7th) and stays editable.
               </p>
             )}
           </div>
@@ -764,12 +950,17 @@ export default function AddClientPage() {
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
-                  Per installment
+                  First installment
                 </p>
                 <p className="mt-1.5 text-lg font-bold text-slate-950 sm:text-xl">
                   {formatKSh(
-                    draftSchedule?.installments?.[0]?.amount ??
-                      (premiumNumber / Math.max(form.installment_count, 1)),
+                    Number(
+                      parseNumberInput(
+                        form.installment_overrides[0]?.amount,
+                      ),
+                    ) ||
+                      draftSchedule?.installments?.[0]?.amount ||
+                      0,
                   )}
                 </p>
               </div>
@@ -778,7 +969,7 @@ export default function AddClientPage() {
                   First due
                 </p>
                 <p className="mt-1.5 text-lg font-bold text-slate-950 sm:text-xl">
-                  {form.start_date || '—'}
+                  {formatDisplayDate(form.start_date) || '—'}
                 </p>
               </div>
             </div>
@@ -818,27 +1009,59 @@ export default function AddClientPage() {
                   Installment schedule
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Due dates auto-fill monthly from the policy start date. Amounts
-                  and dates remain editable.
+                  Set each installment as a % of total premium (e.g. 40 / 30 /
+                  30). Due dates follow the plan and stay editable.
                 </p>
               </div>
 
+              {installmentPresets.length > 1 && (
+                <div className="flex flex-wrap gap-2">
+                  {installmentPresets.map(preset => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => applyRatePreset(preset.id)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary-200 hover:bg-primary-50"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {(draftSchedule?.installments ?? []).map((installment, index) => {
                 const override = form.installment_overrides[index] ?? {
-                  amount: String(installment.amount),
+                  amount: formatNumberInput(String(installment.amount)),
+                  rate: formatNumberInput(String(installment.rate)),
                   due_date: installment.due_date,
                 }
 
                 return (
                   <div
                     key={installment.number}
-                    className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:grid-cols-[auto_1fr_1fr]"
+                    className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:grid-cols-[auto_minmax(5.5rem,0.7fr)_1fr_1fr]"
                   >
                     <div className="flex items-center">
                       <span className="rounded-full bg-white px-3 py-1.5 text-sm font-bold text-slate-700 ring-1 ring-slate-200">
                         #{installment.number}
                       </span>
                     </div>
+                    <Field label="Rate">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={override.rate ?? ''}
+                          onChange={e =>
+                            updateInstallment(index, 'rate', e.target.value)
+                          }
+                          className={`${INPUT} pr-10`}
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-sm font-medium text-slate-400">
+                          %
+                        </span>
+                      </div>
+                    </Field>
                     <Field label="Amount">
                       <input
                         type="text"
@@ -851,18 +1074,34 @@ export default function AddClientPage() {
                       />
                     </Field>
                     <Field label="Due date">
-                      <input
-                        type="date"
+                      <DateInput
                         value={override.due_date}
-                        onChange={e =>
-                          updateInstallment(index, 'due_date', e.target.value)
+                        onChange={value =>
+                          updateInstallment(index, 'due_date', value)
                         }
-                        className={INPUT}
                       />
                     </Field>
                   </div>
                 )
               })}
+
+              {form.installment_overrides.length > 0 && (
+                <p
+                  className={`text-sm font-medium ${
+                    ratesBalanced && amountsBalanced
+                      ? 'text-slate-500'
+                      : 'text-amber-700'
+                  }`}
+                >
+                  Rates total {rateTotal.toFixed(2)}%
+                  {!ratesBalanced ? ' (should be 100%)' : ''}
+                  {' · '}
+                  Amounts {formatKSh(amountTotal)}
+                  {!amountsBalanced
+                    ? ` (should be ${formatKSh(premiumNumber)})`
+                    : ''}
+                </p>
+              )}
             </div>
 
             <Field label="Payment notes">
@@ -879,57 +1118,171 @@ export default function AddClientPage() {
 
         {step === 5 && (
           <div className="space-y-4">
-            <dl className="rounded-xl border border-slate-200 bg-slate-50/70 px-4">
-              <ReviewRow label="Insured" value={form.name} />
-              <ReviewRow label="Phone" value={form.phone} />
-              <ReviewRow label="Email" value={form.email} />
-              <ReviewRow
-                label="Registration"
-                value={form.registration.trim().toUpperCase() || 'Pending'}
-              />
-              <ReviewRow
-                label="Chassis"
-                value={form.chassis.trim().toUpperCase()}
-              />
-              <ReviewRow
-                label="Vehicle"
-                value={`${form.year ? `${form.year} ` : ''}${resolvedMake} ${resolvedModel}`}
-              />
-              <ReviewRow label="Cover" value={policyTypeLabel} />
-              <ReviewRow label="Insurer" value={resolvedInsurer} />
-              <ReviewRow label="Premium" value={formatKSh(premiumNumber)} />
-              <ReviewRow label="Start date" value={form.start_date} />
-              <ReviewRow label="Expiry" value={form.expiry_date} />
-              <ReviewRow
-                label="Installments"
-                value={`${form.installment_count} payment${form.installment_count === 1 ? '' : 's'}`}
-              />
-            </dl>
-
-            {draftSchedule?.installments?.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-slate-200">
-                <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                  <h3 className="text-base font-bold text-slate-900">
-                    Payment schedule
+            <div className="rounded-2xl bg-slate-950 px-5 py-5 text-white sm:px-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
+                Ready to save
+              </p>
+              <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                  <h3 className="truncate text-2xl font-bold tracking-tight">
+                    {form.name || '—'}
                   </h3>
+                  <p className="mt-1 text-base text-white/70">
+                    {form.registration.trim().toUpperCase() || 'Pending reg'}
+                    {' · '}
+                    {[form.year, resolvedMake, resolvedModel]
+                      .filter(Boolean)
+                      .join(' ')}
+                  </p>
                 </div>
-                <ul className="divide-y divide-slate-100">
-                  {draftSchedule.installments.map(item => (
-                    <li
-                      key={item.number}
-                      className="flex items-center justify-between gap-3 px-4 py-3 text-base"
-                    >
-                      <span className="font-semibold text-slate-800">
-                        Installment {item.number}
-                      </span>
-                      <span className="text-slate-500">{item.due_date}</span>
-                      <span className="font-bold text-slate-950">
-                        {formatKSh(item.amount)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="sm:text-right">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/45">
+                    Total premium
+                  </p>
+                  <p className="mt-1 text-2xl font-bold tracking-tight">
+                    {formatKSh(premiumNumber)}
+                  </p>
+                </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <ReviewSection title="Insured">
+                <ReviewFact label="Name" value={form.name} />
+                <ReviewFact label="Phone" value={form.phone} />
+                <ReviewFact label="ID number" value={form.id_number} />
+                <ReviewFact label="Email" value={form.email} />
+                <ReviewFact
+                  label="Address"
+                  value={form.address}
+                  className="sm:col-span-2"
+                />
+              </ReviewSection>
+
+              <ReviewSection title="Vehicle">
+                <ReviewFact
+                  label="Registration"
+                  value={
+                    form.registration.trim().toUpperCase() || 'Pending'
+                  }
+                />
+                <ReviewFact
+                  label="Chassis"
+                  value={form.chassis.trim().toUpperCase()}
+                />
+                <ReviewFact
+                  label="Make / model"
+                  value={`${resolvedMake} ${resolvedModel}`}
+                />
+                <ReviewFact label="Year" value={form.year} />
+                <ReviewFact
+                  label="Vehicle value(Kshs)"
+                  value={
+                    form.vehicle_value
+                      ? formatKSh(Number(parseNumberInput(form.vehicle_value)) || 0)
+                      : null
+                  }
+                />
+                <ReviewFact
+                  label="Use"
+                  value={
+                    USE_TYPES.find(type => type.value === form.use_type)
+                      ?.label
+                  }
+                />
+              </ReviewSection>
+
+              <ReviewSection title="Cover" className="lg:col-span-2">
+                <ReviewFact label="Cover type" value={policyTypeLabel} />
+                <ReviewFact label="Insurer" value={resolvedInsurer} />
+                <ReviewFact label="Policy number" value={form.policy_number} />
+                <ReviewFact
+                  label="Sum insured"
+                  value={
+                    form.vehicle_value
+                      ? formatKSh(Number(parseNumberInput(form.vehicle_value)) || 0)
+                      : null
+                  }
+                />
+                <ReviewFact
+                  label="Start"
+                  value={formatDisplayDate(form.start_date)}
+                />
+                <ReviewFact
+                  label="Renewal / expiry"
+                  value={formatDisplayDate(form.expiry_date)}
+                />
+              </ReviewSection>
+            </div>
+
+            {(form.installment_overrides.length > 0 ||
+              draftSchedule?.installments?.length > 0) && (
+              <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+                <div className="flex flex-wrap items-end justify-between gap-2 border-b border-slate-100 px-4 py-4 sm:px-5">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Payment plan
+                    </h3>
+                    <p className="mt-1 text-base font-semibold text-slate-900">
+                      {form.installment_count} installment
+                      {form.installment_count === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  <p className="text-sm font-medium text-slate-500">
+                    {formatKSh(premiumNumber)} total
+                  </p>
+                </div>
+
+                <ul className="divide-y divide-slate-100">
+                  {(form.installment_overrides.length > 0
+                    ? form.installment_overrides
+                    : draftSchedule.installments
+                  ).map((item, index) => {
+                    const amount =
+                      Number(parseNumberInput(item.amount)) ||
+                      Number(item.amount) ||
+                      0
+                    const rate =
+                      item.rate != null && item.rate !== ''
+                        ? Number(parseNumberInput(item.rate)) || item.rate
+                        : null
+
+                    return (
+                      <li
+                        key={item.number || index}
+                        className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-3 px-4 py-3.5 sm:grid-cols-[3rem_4.5rem_1fr_auto] sm:gap-4 sm:px-5"
+                      >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-600">
+                          {index + 1}
+                        </span>
+                        <span className="hidden text-sm font-semibold text-slate-500 sm:block">
+                          {rate != null ? `${rate}%` : '—'}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">
+                            {formatDisplayDate(item.due_date)}
+                          </p>
+                          <p className="text-sm text-slate-500 sm:hidden">
+                            {rate != null ? `${rate}% of premium` : 'Installment'}
+                          </p>
+                        </div>
+                        <span className="text-right text-base font-bold text-slate-950">
+                          {formatKSh(amount)}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            )}
+
+            {(form.notes || form.vehicle_notes || form.cover_notes || form.payment_notes) && (
+              <ReviewSection title="Notes" className="lg:col-span-2">
+                <ReviewFact label="Client notes" value={form.notes} />
+                <ReviewFact label="Vehicle notes" value={form.vehicle_notes} />
+                <ReviewFact label="Cover notes" value={form.cover_notes} />
+                <ReviewFact label="Payment notes" value={form.payment_notes} />
+              </ReviewSection>
             )}
           </div>
         )}

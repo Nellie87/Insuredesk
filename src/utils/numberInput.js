@@ -31,3 +31,17 @@ export function toNumberOrNull(value) {
   const n = Number(raw)
   return Number.isFinite(n) ? n : null
 }
+
+/**
+ * Calculates total premium from sum insured and a rate percent.
+ * Returns a formatted amount string, or null when inputs are incomplete.
+ */
+export function premiumFromRate(sumInsured, ratePercent) {
+  const sum = Number(parseNumberInput(sumInsured)) || 0
+  const rateRaw = parseNumberInput(ratePercent)
+  if (rateRaw === '' || sum <= 0) return null
+  const rate = Number(rateRaw)
+  if (!Number.isFinite(rate)) return null
+  const premium = Math.round(((sum * rate) / 100) * 100) / 100
+  return formatNumberInput(String(premium))
+}

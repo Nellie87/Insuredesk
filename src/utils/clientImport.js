@@ -168,11 +168,7 @@ function parseNumber(value) {
   return Number.isFinite(number) ? number : null
 }
 
-function defaultExpiryDate(startDate) {
-  const date = new Date(startDate)
-  date.setFullYear(date.getFullYear() + 1)
-  return date.toISOString().slice(0, 10)
-}
+import { defaultExpiryDate } from './policyDates'
 
 function normalizePolicyType(value) {
   const key = String(value ?? '')

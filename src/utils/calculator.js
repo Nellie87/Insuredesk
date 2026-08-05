@@ -223,15 +223,88 @@ export function hasOverduePayment(schedule) {
 }
 
 /**
- * Builds an equal installment schedule from policy start date.
- * Due dates are monthly from the start date (installment 1 = start date).
+ * Months between installment due dates for an annual policy.
+ * 1 = single payment on start; 2 = half-yearly; 3–4 = quarterly; 5 ≈ every 2 months.
+ */
+export function installmentMonthStep(installmentCount) {
+  const count = Math.max(Math.round(Number(installmentCount) || 1), 1)
+  if (count <= 1) return 0
+  const steps = { 2: 6, 3: 3, 4: 3, 5: 2 }
+  return steps[count] ?? Math.max(1, Math.round(12 / count))
+}
+
+/** Equal rate split that always sums to 100 (last installment takes the remainder). */
+export function equalInstallmentRates(count) {
+  const n = Math.max(Math.round(Number(count) || 1), 1)
+  const base = round2(100 / n)
+  return Array.from({ length: n }, (_, i) =>
+    i === n - 1 ? round2(100 - base * (n - 1)) : base,
+  )
+}
+
+/** Common unequal splits agents use; falls back to equal rates. */
+export function presetInstallmentRates(count, preset = 'equal') {
+  const n = Math.max(Math.round(Number(count) || 1), 1)
+  const presets = {
+    equal: equalInstallmentRates(n),
+    '40-30-30': n === 3 ? [40, 30, 30] : null,
+    '50-30-20': n === 3 ? [50, 30, 20] : null,
+    '60-40': n === 2 ? [60, 40] : null,
+    '70-30': n === 2 ? [70, 30] : null,
+    '40-20-20-20': n === 4 ? [40, 20, 20, 20] : null,
+  }
+  return presets[preset] ?? equalInstallmentRates(n)
+}
+
+/** Converts rate percents into installment amounts that sum to the premium. */
+export function amountsFromRates(premium, rates) {
+  const total = Number(premium) || 0
+  const list = Array.isArray(rates) ? rates : []
+  if (list.length === 0) return []
+
+  const amounts = []
+  let allocated = 0
+
+  for (let i = 0; i < list.length; i++) {
+    if (i === list.length - 1) {
+      amounts.push(round2(Math.max(0, total - allocated)))
+    } else {
+      const rate = Number(list[i]) || 0
+      const amount = round2((total * rate) / 100)
+      amounts.push(amount)
+      allocated = round2(allocated + amount)
+    }
+  }
+
+  return amounts
+}
+
+/** Rate percent for an amount against the total premium. */
+export function rateFromAmount(premium, amount) {
+  const total = Number(premium) || 0
+  if (total <= 0) return 0
+  return round2((Number(amount) / total) * 100)
+}
+
+function parseAmountValue(value) {
+  if (value === '' || value == null) return null
+  const number = Number(String(value).replace(/,/g, ''))
+  return Number.isFinite(number) ? number : null
+}
+
+/**
+ * Builds an installment schedule from policy start date.
+ * Due dates are spaced across the policy year by installment count
+ * (e.g. 2 = half-yearly, 3 = quarterly). Installment 1 = start date.
+ * Pass `rates` (e.g. [40, 30, 30]) to split the premium by percent.
  * Amounts and due dates can be overridden via `overrides`.
  *
  * @param {{
  *   premium: number,
  *   installmentCount: number,
  *   startDate: string,
- *   overrides?: Array<{ amount?: number|string|null, due_date?: string|null, paid?: boolean, paid_at?: string|null, paid_amount?: number|null }>,
+ *   rates?: number[],
+ *   overrides?: Array<{ amount?: number|string|null, due_date?: string|null, rate?: number|string|null, paid?: boolean, paid_at?: string|null, paid_amount?: number|null }>,
  *   maxInstallments?: number,
  * }} input
  * @returns {Omit<import('../types').PaymentSchedule, 'id'|'vehicle_id'|'created_at'> | null}
@@ -240,6 +313,7 @@ export function buildInstallmentSchedule({
   premium,
   installmentCount,
   startDate,
+  rates,
   overrides = [],
   maxInstallments = 5,
 }) {
@@ -253,28 +327,32 @@ export function buildInstallmentSchedule({
   const baseDate = new Date(`${startDate}T12:00:00`)
   if (Number.isNaN(baseDate.getTime())) return null
 
-  const baseAmount = round2(totalPremium / count)
+  const monthStep = installmentMonthStep(count)
+  const resolvedRates =
+    Array.isArray(rates) && rates.length === count
+      ? rates.map(rate => Number(rate) || 0)
+      : equalInstallmentRates(count)
+  const defaultAmounts = amountsFromRates(totalPremium, resolvedRates)
   const installments = []
 
   for (let i = 0; i < count; i++) {
     const override = overrides[i] ?? {}
-    const isLast = i === count - 1
-    const defaultAmount = isLast
-      ? round2(totalPremium - baseAmount * (count - 1))
-      : baseAmount
-
-    const rawAmount = override.amount
-    const amount =
-      rawAmount === '' || rawAmount == null
-        ? defaultAmount
-        : Number(rawAmount)
+    const defaultAmount = defaultAmounts[i]
+    const parsedAmount = parseAmountValue(override.amount)
+    const amount = parsedAmount == null ? defaultAmount : parsedAmount
+    const parsedRate = parseAmountValue(override.rate)
+    const rate =
+      parsedRate == null
+        ? resolvedRates[i]
+        : parsedRate
 
     installments.push({
       number: i + 1,
       amount: Number.isFinite(amount) ? round2(amount) : defaultAmount,
+      rate: Number.isFinite(rate) ? round2(rate) : resolvedRates[i],
       due_date:
         override.due_date ||
-        format(addMonths(baseDate, i), 'yyyy-MM-dd'),
+        format(addMonths(baseDate, i * monthStep), 'yyyy-MM-dd'),
       paid: Boolean(override.paid),
       paid_at: override.paid_at ?? null,
       paid_amount: override.paid_amount ?? null,
