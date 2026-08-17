@@ -74,6 +74,11 @@ export function usePushNotifications() {
   const sendTest = useCallback(async () => {
     setBusy(true)
     try {
+      if (!subscribed) {
+        await enablePushNotifications(agentId)
+        await refresh()
+      }
+
       try {
         await sendTestPush()
         return 'push'
@@ -89,7 +94,7 @@ export function usePushNotifications() {
     } finally {
       setBusy(false)
     }
-  }, [])
+  }, [agentId, refresh, subscribed])
 
   return {
     supported,

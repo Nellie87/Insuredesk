@@ -3,6 +3,11 @@ import { usePushNotifications } from '../../hooks/usePushNotifications'
 
 export default function PushNotificationsCard({ compact = false }) {
   const push = usePushNotifications()
+  const blocked =
+    !push.supported ||
+    !push.configured ||
+    push.iosNeedsInstall ||
+    push.permission === 'denied'
 
   const handleEnable = async () => {
     try {
@@ -28,7 +33,7 @@ export default function PushNotificationsCard({ compact = false }) {
       toast(
         kind === 'push'
           ? 'Test alert sent. Check your notifications.'
-          : 'Local test alert sent. Scheduled push still needs the server job in README.',
+          : 'Test alert shown. Check the corner of the screen or the notification shade.',
       )
     } catch (err) {
       toast(err.message || 'Could not send a test alert.', 'error')
@@ -53,38 +58,33 @@ export default function PushNotificationsCard({ compact = false }) {
 
       <div className="flex flex-wrap gap-2">
         {push.subscribed ? (
-          <>
-            <button
-              type="button"
-              onClick={handleDisable}
-              disabled={push.busy}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"
-            >
-              {push.busy ? 'Working...' : 'Turn off'}
-            </button>
-            <button
-              type="button"
-              onClick={handleTest}
-              disabled={push.busy}
-              className="rounded-xl border border-primary-100 bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-800 disabled:opacity-50"
-            >
-              Send test
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={handleDisable}
+            disabled={push.busy}
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"
+          >
+            {push.busy ? 'Working...' : 'Turn off'}
+          </button>
         ) : (
           <button
             type="button"
             onClick={handleEnable}
-            disabled={
-              push.busy ||
-              !push.supported ||
-              !push.configured ||
-              push.iosNeedsInstall ||
-              push.permission === 'denied'
-            }
+            disabled={push.busy || blocked}
             className="rounded-xl bg-primary-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
           >
             {push.busy ? 'Enabling...' : 'Enable alerts'}
+          </button>
+        )}
+
+        {!compact && (
+          <button
+            type="button"
+            onClick={handleTest}
+            disabled={push.busy || blocked}
+            className="rounded-xl border border-primary-100 bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-800 disabled:opacity-50"
+          >
+            {push.busy ? 'Sending...' : 'Send test'}
           </button>
         )}
       </div>
