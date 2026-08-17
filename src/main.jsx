@@ -1,7 +1,10 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import './styles/index.css'
+
+registerSW({ immediate: true })
 
 // Mouse wheel over number/range inputs must not change values while scrolling the page
 document.addEventListener(

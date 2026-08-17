@@ -4,9 +4,9 @@ import { usePushNotifications } from '../../hooks/usePushNotifications'
 export default function PushNotificationsCard({ compact = false }) {
   const push = usePushNotifications()
   const blocked =
-    !push.supported ||
+    (!push.supported && push.permission !== 'granted') ||
     !push.configured ||
-    push.iosNeedsInstall ||
+    (push.iosNeedsInstall && push.permission !== 'granted') ||
     push.permission === 'denied'
 
   const handleEnable = async () => {
@@ -47,6 +47,16 @@ export default function PushNotificationsCard({ compact = false }) {
       <div>
         <h2 className="text-sm font-bold text-slate-900">Phone alerts</h2>
         <p className="mt-1 text-xs text-slate-500">{push.statusText}</p>
+        <p className="mt-1 text-[11px] text-slate-400">
+          Browser permission:{' '}
+          {push.permission === 'granted'
+            ? 'allowed'
+            : push.permission === 'denied'
+              ? 'blocked'
+              : 'not asked yet'}
+          {' · '}
+          Phone connection: {push.subscribed ? 'connected' : 'not connected yet'}
+        </p>
       </div>
 
       {!compact && (

@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? ''
+const VAPID_PUBLIC_KEY = (import.meta.env.VITE_VAPID_PUBLIC_KEY ?? '').trim()
 
 export function isPushConfigured() {
   return Boolean(VAPID_PUBLIC_KEY)
@@ -32,7 +32,9 @@ export function isStandalonePwa() {
 }
 
 export function getNotificationPermission() {
-  if (!isPushSupported()) return 'unsupported'
+  if (typeof window === 'undefined' || typeof Notification === 'undefined') {
+    return 'unsupported'
+  }
   return Notification.permission
 }
 
@@ -174,14 +176,28 @@ export async function disablePushForThisDevice() {
 }
 
 export async function showLocalNotification(title, options = {}) {
-  if (!isPushSupported() || Notification.permission !== 'granted') return false
-  const registration = await serviceWorkerReady()
-  await registration.showNotification(title, {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+    return false
+  }
+
+  const payload = {
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
     ...options,
-  })
-  return true
+  }
+
+  try {
+    const registration = await serviceWorkerReady(4000)
+    await registration.showNotification(title, payload)
+    return true
+  } catch {
+    try {
+      new Notification(title, payload)
+      return true
+    } catch {
+      return false
+    }
+  }
 }
 
 export async function sendTestPush() {
