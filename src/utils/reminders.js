@@ -1,5 +1,66 @@
-import { format } from 'date-fns'
-import { formatKSh } from './calculator'
+import { differenceInDays, format, startOfDay } from 'date-fns'
+import {
+  formatKSh,
+  getInstallmentRemaining,
+} from './calculator'
+
+/** Payment reminders: 2 weeks before, 1 week before, and the day before. */
+export const PAYMENT_REMINDER_OFFSETS = [
+  { daysBefore: 14, trigger: 'payment_due_14d', title: '14-day reminder' },
+  { daysBefore: 7, trigger: 'payment_due_7d', title: '7-day reminder' },
+  { daysBefore: 1, trigger: 'payment_due_1d', title: 'Day-before reminder' },
+]
+
+const PAYMENT_WHEN = {
+  payment_due_14d: 'in 14 days',
+  payment_due_7d: 'in 7 days',
+  payment_due_3d: 'in 3 days',
+  payment_due_1d: '*tomorrow*',
+  payment_due_today: '*today*',
+}
+
+function parseDueDate(installment) {
+  if (!installment?.due_date) return null
+  const date = new Date(installment.due_date)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function paymentBalanceLines(remaining, totalPayable) {
+  const remainingStr = formatKSh(remaining)
+  const total = Math.max(remaining, Number(totalPayable || 0))
+  const totalStr = formatKSh(total)
+  return (
+    `Remaining balance: *${remainingStr}*\n` +
+    `Total payable (to clear the policy): *${totalStr}*\n\n`
+  )
+}
+
+function paymentContactLines(agentName, agentPhone, urgent = false) {
+  const verb = urgent
+    ? 'urgently to avoid interruption to your cover'
+    : 'to make your payment'
+  return (
+    `Please contact ${agentName} on ${agentPhone} ${verb}.\n\n` +
+    `Thank you for choosing us.`
+  )
+}
+
+/**
+ * Pick the payment reminder trigger from days until the due date.
+ * @param {string} dueDate
+ * @param {Date} [today]
+ * @returns {import('../types').ReminderTrigger}
+ */
+export function paymentReminderTriggerForDueDate(dueDate, today = new Date()) {
+  if (!dueDate) return 'payment_due_14d'
+  const due = startOfDay(new Date(dueDate))
+  const days = differenceInDays(due, startOfDay(today))
+  if (days < 0) return 'payment_overdue_1d'
+  if (days === 0) return 'payment_due_today'
+  if (days === 1) return 'payment_due_1d'
+  if (days <= 7) return 'payment_due_7d'
+  return 'payment_due_14d'
+}
 
 /**
  * Generates a WhatsApp/SMS reminder message based on trigger type
@@ -9,50 +70,54 @@ import { formatKSh } from './calculator'
  * @param {import('../types').Client} params.client
  * @param {import('../types').Vehicle} params.vehicle
  * @param {import('../types').Installment} [params.installment]
+ * @param {number} [params.outstanding] Total remaining on the policy
  * @param {import('../types').Agent} params.agent
  * @returns {string}
  */
-export function buildReminderMessage({ trigger, client, vehicle, installment, agent }) {
+export function buildReminderMessage({
+  trigger,
+  client,
+  vehicle,
+  installment,
+  outstanding,
+  agent,
+}) {
   const firstName = client.name.split(' ')[0]
   const reg = vehicle.registration
   const agentName = agent.name
   const agentPhone = agent.phone
+  const remaining = getInstallmentRemaining(installment)
+  const totalPayable = Math.max(remaining, Number(outstanding || 0))
+  const due = parseDueDate(installment)
+  const dueDate = due ? format(due, 'dd MMM yyyy') : 'soon'
+  const balances = paymentBalanceLines(remaining, totalPayable)
 
   switch (trigger) {
+    case 'payment_due_14d':
     case 'payment_due_7d':
-    case 'payment_due_3d': {
-      const days = trigger === 'payment_due_7d' ? 7 : 3
-      const dueDate = installment ? format(new Date(installment.due_date), 'dd MMM yyyy') : 'soon'
-      const amount = installment ? formatKSh(installment.amount) : ''
-      return (
-        `Hello ${firstName}, this is a reminder that your motor insurance installment of *${amount}* for vehicle *${reg}* is due in ${days} days, on *${dueDate}*.\n\n` +
-        `Please contact ${agentName} on ${agentPhone} to make your payment.\n\n` +
-        `Thank you for choosing us.`
-      )
-    }
-
+    case 'payment_due_3d':
+    case 'payment_due_1d':
     case 'payment_due_today': {
-      const amount = installment ? formatKSh(installment.amount) : ''
+      const when = PAYMENT_WHEN[trigger] ?? 'soon'
       return (
-        `Hello ${firstName}, your motor insurance payment of *${amount}* for vehicle *${reg}* is due *today*.\n\n` +
-        `Please contact ${agentName} on ${agentPhone} to arrange payment and keep your policy active.\n\n` +
-        `Thank you.`
+        `Hello ${firstName}, this is a reminder that your motor insurance installment for vehicle *${reg}* is due ${when}, on *${dueDate}*.\n\n` +
+        balances +
+        paymentContactLines(agentName, agentPhone)
       )
     }
 
     case 'payment_overdue_1d': {
-      const amount = installment ? formatKSh(installment.amount) : ''
       return (
-        `Hello ${firstName}, your motor insurance installment of *${amount}* for vehicle *${reg}* was due yesterday and has not been received.\n\n` +
-        `Please contact ${agentName} on ${agentPhone} urgently to avoid interruption to your cover.\n\n` +
-        `Thank you.`
+        `Hello ${firstName}, your motor insurance installment for vehicle *${reg}* was due on *${dueDate}* and has not been received in full.\n\n` +
+        balances +
+        paymentContactLines(agentName, agentPhone, true)
       )
     }
 
     case 'policy_expiry_30d': {
       const expiryDate = format(new Date(vehicle.expiry_date), 'dd MMM yyyy')
       return (
-        `Hello ${firstName}, your motor insurance policy for *${reg}* expires on *${expiryDate}* — that's in 30 days.\n\n` +
+        `Hello ${firstName}, your motor insurance policy for *${reg}* expires on *${expiryDate}* - that's in 30 days.\n\n` +
         `Contact ${agentName} on ${agentPhone} to start your renewal and avoid a lapse in cover.`
       )
     }
@@ -69,7 +134,7 @@ export function buildReminderMessage({ trigger, client, vehicle, installment, ag
       const expiryDate = format(new Date(vehicle.expiry_date), 'dd MMM yyyy')
       return (
         `⚠️ Hello ${firstName}, your motor insurance for *${reg}* expires in *7 days* on ${expiryDate}.\n\n` +
-        `Renew now — contact ${agentName} on ${agentPhone}. Driving without valid insurance is an offence.`
+        `Renew now - contact ${agentName} on ${agentPhone}. Driving without valid insurance is an offence.`
       )
     }
 

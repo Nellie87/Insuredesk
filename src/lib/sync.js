@@ -91,7 +91,7 @@ export async function syncFromCloud(agentId) {
 
 export function startSyncListener() {
   window.addEventListener('online', () => {
-    console.log('[Sync] Back online — starting sync...')
+    console.log('[Sync] Back online - starting sync...')
     syncToCloud()
   })
 }

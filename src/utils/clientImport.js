@@ -380,7 +380,7 @@ export function buildClientImportTemplate() {
     11250,
     11000,
     0,
-    'APA — KDA 123A Toyota Axio',
+    'APA - KDA 123A Toyota Axio',
   ]
 
   const sheet = XLSX.utils.aoa_to_sheet([['Preliminary renewals'], headers, example])

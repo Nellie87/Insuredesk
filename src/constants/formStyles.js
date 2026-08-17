@@ -1,4 +1,4 @@
-/** Shared form / label classes — clean, readable type */
+/** Shared form / label classes - clean, readable type */
 
 export const INPUT =
   'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base text-slate-800 placeholder:text-slate-400 transition focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/25'

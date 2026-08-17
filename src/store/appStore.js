@@ -45,7 +45,7 @@ export const useAppStore = create((set, get) => ({
 
     // Then set up the listener for future auth changes (login / logout)
     supabase.auth.onAuthStateChange(async (event, session) => {
-      // Ignore the INITIAL_SESSION event — already handled above
+      // Ignore the INITIAL_SESSION event - already handled above
       if (event === 'INITIAL_SESSION') return
 
       set({ session, authLoading: false })

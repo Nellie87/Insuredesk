@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react'
 import { format, parseISO, startOfMonth, isSameMonth } from 'date-fns'
 import { useReminders } from '../hooks/useReminders'
 import { useAppStore } from '../store/appStore'
-import { buildReminderMessage, whatsappUrl } from '../utils/reminders'
+import {
+  buildReminderMessage,
+  paymentReminderTriggerForDueDate,
+  whatsappUrl,
+} from '../utils/reminders'
 import {
   downloadIcsFile,
   GOOGLE_CALENDAR_IMPORT_URL,
@@ -30,17 +34,17 @@ function getWhatsAppLink(event, agent) {
 
   if (!message && event.client && event.vehicle) {
     const trigger =
-      event.type === 'renewal'
+      event.trigger ||
+      (event.type === 'renewal'
         ? 'policy_expiry_30d'
-        : event.status === 'overdue'
-          ? 'payment_overdue_1d'
-          : 'payment_due_3d'
+        : paymentReminderTriggerForDueDate(event.installment?.due_date))
 
     message = buildReminderMessage({
       trigger,
       client: event.client,
       vehicle: event.vehicle,
       installment: event.installment,
+      outstanding: event.outstanding,
       agent,
     })
   }

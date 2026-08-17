@@ -260,7 +260,7 @@ export default function CalculatorPage() {
                       className="flex items-center justify-between gap-3 border-b border-slate-100 py-2.5 last:border-0"
                     >
                       <div className="text-sm text-slate-600">
-                        Payment {i + 1} —{' '}
+                        Payment {i + 1} -{' '}
                         {format(new Date(inst.due_date), 'dd MMM yyyy')}
                       </div>
                       <div className="shrink-0 text-sm font-bold text-slate-900">

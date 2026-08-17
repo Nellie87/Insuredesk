@@ -1,4 +1,4 @@
-# InsureAgent — Insurance Agent Management System
+# InsureAgent - Insurance Agent Management System
 
 A mobile-first Progressive Web App (PWA) for insurance agents to manage clients, vehicles, payments, commissions, and reminders.
 
@@ -6,14 +6,14 @@ A mobile-first Progressive Web App (PWA) for insurance agents to manage clients,
 
 ## Features
 
-- **Client & vehicle registry** — searchable, filterable portfolio
-- **Financial calculator** — down payment, installment schedule, commission
-- **Payment tracker** — log payments (M-Pesa, cash, bank), track balances
-- **Due date reminders** — WhatsApp and SMS alerts to clients
-- **Policy renewal alerts** — proactive expiry notifications to agent
-- **Commission dashboard** — monthly earnings breakdown
-- **Offline-first** — works without internet, syncs when back online
-- **PWA installable** — add to home screen on Android or iPhone
+- **Client & vehicle registry** - searchable, filterable portfolio
+- **Financial calculator** - down payment, installment schedule, commission
+- **Payment tracker** - log payments (M-Pesa, cash, bank), track balances
+- **Due date reminders** - WhatsApp and SMS alerts to clients
+- **Policy renewal alerts** - proactive expiry notifications to agent
+- **Commission dashboard** - monthly earnings breakdown
+- **Offline-first** - works without internet, syncs when back online
+- **PWA installable** - add to home screen on Android or iPhone
 
 ---
 
@@ -158,7 +158,7 @@ npm run build
 
 ## Roadmap
 
-### Phase 1 — MVP ✅
+### Phase 1 - MVP ✅
 - [x] Project scaffold (React + Vite + Tailwind + PWA)
 - [x] Supabase schema with Row Level Security
 - [x] Offline-first architecture (IndexedDB + sync queue)
@@ -167,14 +167,14 @@ npm run build
 - [x] Client list with search and filter
 - [x] Financial calculator
 
-### Phase 2 — Automation
+### Phase 2 - Automation
 - [ ] Full client add/edit forms with vehicle details
 - [ ] Payment logging UI
 - [ ] Automated WhatsApp reminders (Africa's Talking / Twilio)
 - [ ] Policy renewal alerts
 - [ ] Commission dashboard
 
-### Phase 3 — Growth
+### Phase 3 - Growth
 - [ ] PDF receipts for payments
 - [ ] Excel/CSV export for reports
 - [ ] Multi-agent / brokerage support
@@ -196,4 +196,4 @@ npm run build
 
 ## License
 
-MIT — built for insurance agents across Kenya and East Africa.
+MIT - built for insurance agents across Kenya and East Africa.

@@ -249,7 +249,7 @@ export default function ClientsPage() {
                             </div>
                           </>
                         ) : (
-                          '—'
+                          '-'
                         )}
                       </td>
                       <td className="px-5 py-3.5">
@@ -261,10 +261,10 @@ export default function ClientsPage() {
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-right font-semibold text-success-700">
-                        {schedule ? formatKSh(amountPaid) : '—'}
+                        {schedule ? formatKSh(amountPaid) : '-'}
                       </td>
                       <td className="px-5 py-3.5 text-right font-semibold text-amber-700">
-                        {schedule ? formatKSh(outstanding) : '—'}
+                        {schedule ? formatKSh(outstanding) : '-'}
                       </td>
                     </tr>
                   )

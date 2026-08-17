@@ -60,14 +60,52 @@ const METHOD_LABELS = {
   cheque: 'Cheque',
 }
 
+const PAYMENT_METHODS = [
+  { value: 'mpesa', label: 'M-Pesa' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'cheque', label: 'Cheque' },
+]
+
+function vehiclePaymentLabel(vehicle) {
+  const year = vehicle.year ? `${vehicle.year} ` : ''
+  return `${vehicle.registration || 'No Reg'} · ${year}${vehicle.make || ''} ${vehicle.model || ''}`.trim()
+}
+
+function suggestedPaymentAmount(vehicle, payments) {
+  const schedule = getVehicleSchedules(vehicle)[0]
+  const next = getNextDueInstallment(schedule)
+  if (next) {
+    const remaining =
+      Number(next.amount || 0) - getInstallmentPaidAmount(next)
+    if (remaining > 0.01) return remaining
+  }
+  const summary = getVehicleCollectionSummary(vehicle, payments)
+  return summary.outstanding > 0.01 ? summary.outstanding : 0
+}
+
+function initialPaymentForm(vehicles, payments) {
+  const vehicleId = vehicles.length === 1 ? vehicles[0].id : ''
+  const vehicle = vehicles.find(item => item.id === vehicleId)
+  const amount = vehicle ? suggestedPaymentAmount(vehicle, payments) : 0
+  return {
+    vehicleId,
+    amount: amount > 0 ? formatNumberInput(String(amount)) : '',
+    method: 'mpesa',
+    reference: '',
+    notes: '',
+    date: new Date().toISOString().split('T')[0],
+  }
+}
+
 function formatDate(value) {
-  if (!value) return '—'
-  return formatDisplayDate(value) || '—'
+  if (!value) return '-'
+  return formatDisplayDate(value) || '-'
 }
 
 function formatShortDate(value) {
-  if (!value) return '—'
-  return formatDisplayDate(value) || '—'
+  if (!value) return '-'
+  return formatDisplayDate(value) || '-'
 }
 
 function toNumber(value) {
@@ -180,7 +218,7 @@ function DetailItem({ label, value, icon, className = '' }) {
         <span>{label}</span>
       </div>
       <dd className="mt-1 break-words text-sm font-semibold text-slate-800">
-        {value || '—'}
+        {value || '-'}
       </dd>
     </div>
   )
@@ -405,14 +443,14 @@ function CompactProgress({
 
       {hasOverpayment && (
         <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-800">
-          Overpayment of {formatKSh(overpayment)} — collected exceeds the premium.
+          Overpayment of {formatKSh(overpayment)} - collected exceeds the premium.
           Confirm with the client whether this is a credit, refund, or next-period payment.
         </div>
       )}
 
       {partialPaid && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
-          Balance due — remind the client that {formatKSh(outstanding)} remains on this policy.
+          Balance due - remind the client that {formatKSh(outstanding)} remains on this policy.
           {nextDue?.due_date
             ? ` Next installment: ${formatKSh(nextDue.amount)} by ${formatDate(nextDue.due_date)}.`
             : ''}
@@ -1128,7 +1166,7 @@ function VehicleCard({
                   <input
                     type="text"
                     readOnly
-                    value={formatNumberInput(String(vehicle.vehicle_value || '')) || '—'}
+                    value={formatNumberInput(String(vehicle.vehicle_value || '')) || '-'}
                     className={`${INPUT} bg-slate-100/60 text-slate-500 cursor-not-allowed`}
                     tabIndex={-1}
                   />
@@ -1502,6 +1540,183 @@ function VehicleCard({
   )
 }
 
+function LogPaymentDialog({
+  client,
+  vehicles,
+  payments,
+  saving,
+  onClose,
+  onSubmit,
+}) {
+  const [form, setForm] = useState(() => initialPaymentForm(vehicles, payments))
+  const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
+  const multiVehicle = vehicles.length > 1
+  const selectedVehicle = vehicles.find(item => item.id === form.vehicleId)
+
+  useEffect(() => {
+    const onKey = event => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const selectVehicle = vehicleId => {
+    const vehicle = vehicles.find(item => item.id === vehicleId)
+    const amount = vehicle ? suggestedPaymentAmount(vehicle, payments) : 0
+    setForm(prev => ({
+      ...prev,
+      vehicleId,
+      amount: amount > 0 ? formatNumberInput(String(amount)) : '',
+    }))
+  }
+
+  const handleSubmit = async event => {
+    event.preventDefault()
+    if (!form.vehicleId || !parseNumberInput(form.amount)) {
+      toast('Vehicle and amount are required.', 'error')
+      return
+    }
+    await onSubmit(form)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-3 sm:items-center sm:p-6"
+      onClick={onClose}
+      role="presentation"
+    >
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="log-payment-title"
+        onClick={event => event.stopPropagation()}
+        onSubmit={handleSubmit}
+        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xl sm:p-6"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
+              {client.name}
+            </p>
+            <h2 id="log-payment-title" className="mt-1 text-lg font-bold text-slate-900">
+              Log payment
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Record a payment against this client's policy.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-2 py-1 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Vehicle" required className="sm:col-span-2">
+            {multiVehicle ? (
+              <select
+                required
+                value={form.vehicleId}
+                onChange={e => selectVehicle(e.target.value)}
+                className={INPUT}
+              >
+                <option value="">Select vehicle</option>
+                {vehicles.map(vehicle => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehiclePaymentLabel(vehicle)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input type="hidden" name="vehicleId" value={form.vehicleId} />
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800">
+                  {vehicles[0] ? vehiclePaymentLabel(vehicles[0]) : 'No vehicle'}
+                </div>
+              </>
+            )}
+          </Field>
+
+          <Field label="Amount" required>
+            <input
+              required
+              type="text"
+              inputMode="decimal"
+              placeholder="e.g. 12,500"
+              value={form.amount}
+              onChange={e => set('amount', formatNumberInput(e.target.value))}
+              className={INPUT}
+            />
+          </Field>
+
+          <Field label="Method">
+            <select
+              value={form.method}
+              onChange={e => set('method', e.target.value)}
+              className={INPUT}
+            >
+              {PAYMENT_METHODS.map(method => (
+                <option key={method.value} value={method.value}>
+                  {method.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Reference">
+            <input
+              placeholder="e.g. M-Pesa code"
+              value={form.reference}
+              onChange={e => set('reference', e.target.value)}
+              className={INPUT}
+            />
+          </Field>
+
+          <Field label="Date">
+            <DateInput value={form.date} onChange={value => set('date', value)} />
+          </Field>
+
+          <Field label="Notes" className="sm:col-span-2">
+            <textarea
+              placeholder="Notes optional"
+              value={form.notes}
+              onChange={e => set('notes', e.target.value)}
+              className={`${INPUT} min-h-16`}
+            />
+          </Field>
+        </div>
+
+        {selectedVehicle && (
+          <p className="mt-3 text-xs text-slate-500">
+            Outstanding on this vehicle:{' '}
+            <span className="font-semibold text-slate-700">
+              {formatKSh(
+                getVehicleCollectionSummary(
+                  selectedVehicle,
+                  payments.filter(item => item.vehicle_id === selectedVehicle.id),
+                ).outstanding,
+              )}
+            </span>
+          </p>
+        )}
+
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} className={BTN_SECONDARY}>
+            Cancel
+          </button>
+          <button type="submit" disabled={saving} className={BTN_PRIMARY}>
+            {saving ? 'Saving…' : 'Save payment'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function ClientDetailPage() {
   const { clientId } = useParams()
   const id = clientId?.replace(/-+$/, '')
@@ -1513,14 +1728,21 @@ export default function ClientDetailPage() {
     updateVehicle,
     updatePaymentSchedule,
     createPaymentSchedule,
+    refetch,
   } = useClients()
-  const { payments, loading: paymentsLoading } = usePayments()
+  const {
+    payments,
+    loading: paymentsLoading,
+    logPayment,
+    saving: paymentSaving,
+  } = usePayments()
 
   const client = clients.find(item => item.id === id)
 
   const [editingInsured, setEditingInsured] = useState(false)
   const [insuredForm, setInsuredForm] = useState({})
   const [savingInsured, setSavingInsured] = useState(false)
+  const [showLogPayment, setShowLogPayment] = useState(false)
 
   const clientPayments = useMemo(
     () =>
@@ -1622,6 +1844,58 @@ export default function ClientDetailPage() {
     }
   }
 
+  const handleLogPayment = async form => {
+    const vehicle = vehicles.find(item => item.id === form.vehicleId)
+    if (!vehicle) {
+      toast('Vehicle and amount are required.', 'error')
+      return
+    }
+
+    const schedule = getVehicleSchedules(vehicle)[0]
+    const amount = Number(parseNumberInput(form.amount))
+    const vehiclePayments = clientPayments.filter(
+      payment => payment.vehicle_id === vehicle.id,
+    )
+    const summary = getVehicleCollectionSummary(vehicle, vehiclePayments)
+    const priorPaid = summary.amountPaid
+    const premium = summary.totalPremium || Number(vehicle.premium) || 0
+
+    try {
+      await logPayment({
+        clientId: client.id,
+        vehicleId: vehicle.id,
+        scheduleId: schedule?.id,
+        amount,
+        method: form.method,
+        reference: form.reference,
+        notes: form.notes,
+        date: form.date,
+      })
+      await refetch()
+      setShowLogPayment(false)
+
+      const newPaid = priorPaid + amount
+      const remaining = Math.max(0, premium - newPaid)
+      const overpaid = Math.max(0, newPaid - premium)
+
+      if (overpaid > 0.01) {
+        toast(
+          `Payment logged. Overpayment of ${formatKSh(overpaid)} - confirm credit or refund with the client.`,
+          'info',
+        )
+      } else if (remaining > 0.01) {
+        toast(
+          `Payment logged. Balance due: ${formatKSh(remaining)} - remind the client before cover lapses.`,
+          'info',
+        )
+      } else {
+        toast('Payment logged - portfolio balance updated.')
+      }
+    } catch (err) {
+      toast(err.message || 'Could not log payment.', 'error')
+    }
+  }
+
   return (
     <PageShell>
       <div className="space-y-6">
@@ -1675,9 +1949,19 @@ export default function ClientDetailPage() {
                       Call
                     </a>
                   )}
-                  <Link to="/payments" className={BTN_PRIMARY}>
+                  <button
+                    type="button"
+                    className={BTN_PRIMARY}
+                    onClick={() => {
+                      if (!vehicles.length) {
+                        toast('Add a vehicle before logging a payment.', 'error')
+                        return
+                      }
+                      setShowLogPayment(true)
+                    }}
+                  >
                     Log Payment
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -1927,6 +2211,17 @@ export default function ClientDetailPage() {
           </section>
         </div>
       </div>
+
+      {showLogPayment && (
+        <LogPaymentDialog
+          client={client}
+          vehicles={vehicles}
+          payments={clientPayments}
+          saving={paymentSaving}
+          onClose={() => setShowLogPayment(false)}
+          onSubmit={handleLogPayment}
+        />
+      )}
     </PageShell>
   )
 }

@@ -65,7 +65,7 @@ BEGIN
   -- ─── Clients (mixed statuses for portfolio filters) ───────────────────────
   INSERT INTO clients (id, agent_id, name, phone, id_number, email, address, notes, status, created_at, updated_at)
   VALUES
-    (c1, agent, 'James Mwangi',   '0722111222', '28456123', 'james.m@email.com',  'Westlands, Nairobi',     'APA — KDA 123A Toyota Axio', 'active',         '2025-09-01', '2026-03-01'),
+    (c1, agent, 'James Mwangi',   '0722111222', '28456123', 'james.m@email.com',  'Westlands, Nairobi',     'APA - KDA 123A Toyota Axio', 'active',         '2025-09-01', '2026-03-01'),
     (c2, agent, 'Grace Wanjiku',  '0733444555', '30129876', 'grace.w@email.com',  'Kilimani, Nairobi',      NULL,                        'overdue',        '2025-06-15', '2026-02-20'),
     (c3, agent, 'Peter Ochieng',  '0711666777', '24567890', NULL,                 'Kisumu CBD',             NULL,                        'expiring_soon',  '2024-11-10', '2026-01-15'),
     (c4, agent, 'Mary Akinyi',    '0700888999', '27890123', 'mary.a@email.com',   'Mombasa Road, Nairobi',  NULL,                        'fully_paid',     '2025-01-20', '2025-12-01')
@@ -84,7 +84,7 @@ BEGIN
     (v4, c4, agent, 'KDJ 321D', 'Mazda',   'Demio',   2015, '1300cc', 680000,  'commercial', 'Jubilee','JUB-2025-00987', 'third_party',             '2025-01-20', '2026-01-20', 680000,  18500, '2025-01-20')
   ON CONFLICT (id) DO NOTHING;
 
-  -- ─── Payment schedule (James — instalment plan) ───────────────────────────
+  -- ─── Payment schedule (James - instalment plan) ───────────────────────────
   INSERT INTO payment_schedules (
     id, vehicle_id, agent_id, total_premium, down_payment,
     down_payment_paid, down_payment_paid_at, installment_count, installments, created_at
@@ -143,7 +143,7 @@ BEGIN
   VALUES
     (pr1, agent, 'David Kimani',  '0799111222', NULL,                  'KCA 111E Toyota Fielder',  'Comprehensive', 52000, 'APA',     'quoted',            '2026-04-05', 'Sent quote via WhatsApp', '2026-03-10', '2026-03-15'),
     (pr2, agent, 'Lucy Njeri',    '0788333444', 'lucy.n@email.com',    'KBB 222F Honda Fit',       'Third Party',   15000, 'Britam',  'contacted',         '2026-04-02', 'Wants to compare 3 insurers', '2026-03-18', '2026-03-20'),
-    (pr3, agent, 'Samuel Otieno', '0777555666', 'samuel.o@email.com',  'KCC 333G Isuzu NPR truck', 'Commercial',    95000, 'Jubilee', 'awaiting_payment',  '2026-03-28', 'Fleet quote — 3 vehicles', '2026-02-25', '2026-03-22')
+    (pr3, agent, 'Samuel Otieno', '0777555666', 'samuel.o@email.com',  'KCC 333G Isuzu NPR truck', 'Commercial',    95000, 'Jubilee', 'awaiting_payment',  '2026-03-28', 'Fleet quote - 3 vehicles', '2026-02-25', '2026-03-22')
   ON CONFLICT (id) DO NOTHING;
 
   RAISE NOTICE 'Seed data inserted for agent %', agent;

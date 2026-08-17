@@ -45,9 +45,13 @@ export default function CalendarEventCard({
           <div className="mt-0.5 break-words text-xs text-slate-600">
             {event.subtitle}
           </div>
-          {event.installment?.amount != null && (
+          {(event.remaining != null || event.installment?.amount != null) && (
             <div className="mt-1 text-xs font-semibold text-slate-800">
-              {formatKSh(event.installment.amount)}
+              {formatKSh(event.remaining ?? event.installment.amount)}
+              {event.outstanding != null &&
+              event.outstanding > (event.remaining ?? event.installment.amount) + 0.01
+                ? ` · Total ${formatKSh(event.outstanding)}`
+                : ''}
             </div>
           )}
         </div>

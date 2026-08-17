@@ -206,7 +206,7 @@ export default function DashboardPage() {
     <PageShell>
       <div>
         <p className="text-sm text-slate-500">
-          {firstName ? `Hi ${firstName} — ` : ''}
+          {firstName ? `Hi ${firstName} ,in ` : ''}
           {monthLabel} at a glance
         </p>
       </div>

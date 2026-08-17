@@ -49,7 +49,7 @@ export async function getDB() {
         prospectStore.createIndex('stage', 'stage')
       }
 
-      // Pending sync queue — stores operations to push when back online
+      // Pending sync queue - stores operations to push when back online
       if (!db.objectStoreNames.contains('sync_queue')) {
         const syncStore = db.createObjectStore('sync_queue', { keyPath: 'id' })
         syncStore.createIndex('table', 'table')

@@ -69,6 +69,19 @@ export function getInstallmentPaidAmount(installment) {
 }
 
 /**
+ * Remaining amount on a single installment after partial credit.
+ * @param {import('../types').Installment} installment
+ * @returns {number}
+ */
+export function getInstallmentRemaining(installment) {
+  if (!installment) return 0
+  return Math.max(
+    0,
+    round2(Number(installment.amount || 0) - getInstallmentPaidAmount(installment)),
+  )
+}
+
+/**
  * Total amount paid against a schedule (down payment + installments).
  * @param {import('../types').PaymentSchedule} schedule
  * @returns {number}
@@ -105,7 +118,7 @@ export function sumPayments(payments) {
 
 /**
  * Collected / outstanding for a vehicle using schedule credit and logged payments.
- * Logged payments always count — even when no payment schedule exists yet.
+ * Logged payments always count - even when no payment schedule exists yet.
  *
  * @param {object} vehicle
  * @param {import('../types').Payment[]} [payments]

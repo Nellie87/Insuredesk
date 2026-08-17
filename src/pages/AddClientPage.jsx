@@ -841,7 +841,7 @@ export default function AddClientPage() {
               <input
                 type="text"
                 readOnly
-                value={form.vehicle_value || '—'}
+                value={form.vehicle_value || '-'}
                 className={`${INPUT} bg-slate-50 text-slate-600`}
                 tabIndex={-1}
               />
@@ -969,7 +969,7 @@ export default function AddClientPage() {
                   First due
                 </p>
                 <p className="mt-1.5 text-lg font-bold text-slate-950 sm:text-xl">
-                  {formatDisplayDate(form.start_date) || '—'}
+                  {formatDisplayDate(form.start_date) || '-'}
                 </p>
               </div>
             </div>
@@ -1125,7 +1125,7 @@ export default function AddClientPage() {
               <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
                   <h3 className="truncate text-2xl font-bold tracking-tight">
-                    {form.name || '—'}
+                    {form.name || '-'}
                   </h3>
                   <p className="mt-1 text-base text-white/70">
                     {form.registration.trim().toUpperCase() || 'Pending reg'}
@@ -1256,7 +1256,7 @@ export default function AddClientPage() {
                           {index + 1}
                         </span>
                         <span className="hidden text-sm font-semibold text-slate-500 sm:block">
-                          {rate != null ? `${rate}%` : '—'}
+                          {rate != null ? `${rate}%` : '-'}
                         </span>
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-900">

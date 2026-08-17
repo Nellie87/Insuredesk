@@ -68,9 +68,11 @@ export function googleCalendarUrl({ title, date, description }) {
 }
 
 export function eventToGoogleCalendar(event) {
+  const remaining = event.remaining ?? event.installment?.amount
   const description = [
     event.subtitle,
-    event.installment?.amount ? `Amount: ${event.installment.amount}` : null,
+    remaining != null ? `Remaining balance: ${remaining}` : null,
+    event.outstanding != null ? `Total payable: ${event.outstanding}` : null,
   ]
     .filter(Boolean)
     .join('\n')
@@ -83,7 +85,7 @@ export function eventToGoogleCalendar(event) {
 }
 
 /**
- * Download a .ics file — import into Google Calendar via Settings → Import.
+ * Download a .ics file - import into Google Calendar via Settings → Import.
  */
 export function downloadIcsFile(events, filename = 'insureagent-calendar.ics') {
   const lines = [

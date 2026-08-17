@@ -45,7 +45,7 @@ export interface Vehicle {
   id: string
   client_id: string
   registration: string
-  /** Chassis / VIN — required if registration is empty */
+  /** Chassis / VIN - required if registration is empty */
   chassis?: string | null
   make: string
   model: string
@@ -130,7 +130,7 @@ export interface Commission {
 
 // ─── Reminders ───────────────────────────────────────────────────────────────
 
-export type ReminderTrigger   = 'payment_due_7d' | 'payment_due_3d' | 'payment_due_today' | 'payment_overdue_1d' | 'policy_expiry_30d' | 'policy_expiry_14d' | 'policy_expiry_7d' | 'policy_expiry_today'
+export type ReminderTrigger   = 'payment_due_14d' | 'payment_due_7d' | 'payment_due_3d' | 'payment_due_1d' | 'payment_due_today' | 'payment_overdue_1d' | 'policy_expiry_30d' | 'policy_expiry_14d' | 'policy_expiry_7d' | 'policy_expiry_today'
 export type ReminderChannel   = 'whatsapp' | 'sms' | 'push'
 export type ReminderStatus    = 'scheduled' | 'sent' | 'delivered' | 'failed'
 

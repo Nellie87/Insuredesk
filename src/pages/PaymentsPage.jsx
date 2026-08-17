@@ -158,16 +158,16 @@ export default function PaymentsPage() {
 
       if (overpaid > 0.01) {
         toast(
-          `Payment logged. Overpayment of ${formatKSh(overpaid)} — confirm credit or refund with the client.`,
+          `Payment logged. Overpayment of ${formatKSh(overpaid)} - confirm credit or refund with the client.`,
           'info'
         )
       } else if (remaining > 0.01) {
         toast(
-          `Payment logged. Balance due: ${formatKSh(remaining)} — remind the client before cover lapses.`,
+          `Payment logged. Balance due: ${formatKSh(remaining)} - remind the client before cover lapses.`,
           'info'
         )
       } else {
-        toast('Payment logged — portfolio balance updated.')
+        toast('Payment logged - portfolio balance updated.')
       }
     } catch (err) {
       toast(err.message || 'Could not log payment.', 'error')
@@ -430,7 +430,7 @@ export default function PaymentsPage() {
 
                 {clientCollection.overpayment > 0.01 && (
                   <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/80 px-3 py-2.5 text-xs text-sky-800">
-                    Overpayment of {formatKSh(clientCollection.overpayment)} — collected
+                    Overpayment of {formatKSh(clientCollection.overpayment)} - collected
                     exceeds the premium. Confirm whether this is a credit, refund, or
                     next-period payment.
                   </div>
@@ -438,7 +438,7 @@ export default function PaymentsPage() {
 
                 {clientCollection.outstanding > 0.01 && (
                   <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-xs text-amber-800">
-                    Balance due — if they only paid for short cover (e.g. one month),
+                    Balance due - if they only paid for short cover (e.g. one month),
                     remind them that {formatKSh(clientCollection.outstanding)} is still
                     outstanding on the full premium.
                   </div>
@@ -581,7 +581,7 @@ export default function PaymentsPage() {
                           )}
                         </td>
                         <td className="px-5 py-3.5 text-slate-600">
-                          {payment.vehicles?.registration ?? '—'}
+                          {payment.vehicles?.registration ?? '-'}
                         </td>
                         <td className="px-5 py-3.5 text-slate-600">
                           {METHOD_LABELS[payment.method] ?? payment.method}
