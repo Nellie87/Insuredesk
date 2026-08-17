@@ -146,6 +146,18 @@ export interface Reminder {
   message: string
 }
 
+export interface PushSubscriptionRecord {
+  id: string
+  agent_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
+  user_agent?: string
+  enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
 // ─── Calculator inputs ────────────────────────────────────────────────────────
 
 export interface CalculatorInput {

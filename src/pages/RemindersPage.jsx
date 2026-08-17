@@ -17,6 +17,7 @@ import MonthCalendar, {
 import CalendarEventCard from '../components/calendar/CalendarEventCard'
 import LottieLoader from '../components/ui/LottieLoader'
 import PageShell from '../components/layout/PageShell'
+import PushNotificationsCard from '../components/settings/PushNotificationsCard'
 
 const FILTERS = [
   { value: 'all', label: 'All' },
@@ -142,6 +143,8 @@ export default function RemindersPage() {
       </div>
 
       <CalendarLegend />
+
+      <PushNotificationsCard compact />
 
       <div className="flex gap-2 sm:max-w-xs">
         {['month', 'agenda'].map(v => (

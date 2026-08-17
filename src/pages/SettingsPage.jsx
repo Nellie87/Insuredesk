@@ -5,7 +5,9 @@ import { toast } from '../store/toastStore'
 import { signOut, updateAgentProfile } from '../lib/supabase'
 import { format } from 'date-fns'
 import PageShell from '../components/layout/PageShell'
-import { INPUT_SPACED as INPUT, LABEL, BTN_PRIMARY } from '../constants/formStyles'
+import { INPUT_SPACED as INPUT, LABEL } from '../constants/formStyles'
+import PushNotificationsCard from '../components/settings/PushNotificationsCard'
+import { disablePushForThisDevice } from '../lib/push'
 
 const QUICK_LINKS = [
   { to: '/calculator', label: 'Premium calculator' },
@@ -73,6 +75,7 @@ export default function SettingsPage() {
   }
 
   const handleSignOut = async () => {
+    await disablePushForThisDevice()
     await signOut()
     navigate('/login', { replace: true })
   }
@@ -161,6 +164,8 @@ export default function SettingsPage() {
         </section>
 
         <div className="space-y-4">
+          <PushNotificationsCard />
+
           <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
             <h2 className="text-sm font-bold text-slate-900">Commission rates</h2>
             {rates.length === 0 ? (

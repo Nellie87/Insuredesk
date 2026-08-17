@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase, fetchOrCreateAgent } from '../lib/supabase'
 import { syncFromCloud, syncToCloud, startSyncListener } from '../lib/sync'
 import { isDevAuthBypass, getDevSession, getDevAgent } from '../lib/devAuth'
+import { disablePushForThisDevice } from '../lib/push'
 
 export const useAppStore = create((set, get) => ({
   // ─── Auth ──────────────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ export const useAppStore = create((set, get) => ({
 
       if (event === 'SIGNED_OUT') {
         set({ agent: null })
+        disablePushForThisDevice()
       }
     })
 

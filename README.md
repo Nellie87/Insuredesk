@@ -10,6 +10,7 @@ A mobile-first Progressive Web App (PWA) for insurance agents to manage clients,
 - **Financial calculator** - down payment, installment schedule, commission
 - **Payment tracker** - log payments (M-Pesa, cash, bank), track balances
 - **Due date reminders** - WhatsApp and SMS alerts to clients
+- **Push notifications** - lock-screen alerts on the agent's phone for due payments, renewals, and follow-ups
 - **Policy renewal alerts** - proactive expiry notifications to agent
 - **Commission dashboard** - monthly earnings breakdown
 - **Offline-first** - works without internet, syncs when back online
@@ -130,7 +131,7 @@ The app uses a **service worker** (via Workbox) and **IndexedDB** to work withou
 | Log a payment       | Saved locally, queued for sync             |
 | Add a client        | Saved locally, queued for sync             |
 | Send WhatsApp       | Opens WhatsApp directly on device          |
-| Push notifications  | Queued, delivered when back online         |
+| Push notifications  | Need the phone online; scheduled by a daily job |
 
 When the device reconnects, the sync queue automatically flushes to Supabase.
 
@@ -145,7 +146,7 @@ npm install -g vercel
 vercel
 ```
 
-Set your environment variables in the Vercel dashboard under **Project → Settings → Environment Variables**.
+Set your environment variables in the Vercel dashboard under **Project → Settings → Environment Variables**. Include `VITE_VAPID_PUBLIC_KEY` if you want phone alerts.
 
 ### Netlify
 
@@ -153,6 +154,55 @@ Set your environment variables in the Vercel dashboard under **Project → Setti
 npm run build
 # drag and drop the dist/ folder to netlify.com/drop
 ```
+
+---
+
+## Push notifications
+
+The in-app calendar does not wake your phone on its own. Phone alerts use **Web Push**: the app asks permission, then a daily Supabase job sends due-date reminders to that device.
+
+**What you get:** lock-screen alerts for payments (14 days / 7 days / tomorrow / today / first overdue day), policy renewals (30 / 14 / 7 days and expiry day), and follow-ups. Several items on the same day are grouped into one summary.
+
+**iPhone:** iOS 16.4+. Add InsureAgent to the Home Screen, open it from there, then enable alerts in **Settings**. Safari-in-a-tab cannot receive them.
+
+### 1. Database
+
+Run `migrations/004_push_notifications.sql` in the Supabase SQL editor (skip this on a fresh install that already used the updated `schema.sql`).
+
+### 2. VAPID keys
+
+```bash
+npm run generate:vapid
+```
+
+Put `VITE_VAPID_PUBLIC_KEY` in the app `.env` and in your host (Vercel/Netlify). Put the private values in **Supabase → Edge Functions → Secrets**:
+
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT` (for example `mailto:you@example.com`)
+- `CRON_SECRET`
+
+### 3. Deploy the sender
+
+```bash
+supabase functions deploy push-notify
+```
+
+### 4. Schedule the job (morning, Kenya time)
+
+Call the function once a day around 07:00 East Africa Time. Example with a cron service or GitHub Action:
+
+```bash
+curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/push-notify" \
+  -H "Authorization: Bearer YOUR_ANON_OR_SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -H "x-cron-secret: YOUR_CRON_SECRET" \
+  -d '{"mode":"cron"}'
+```
+
+Until this job is running, **Enable alerts** still stores the phone subscription and **Send test** can confirm permission. Scheduled due-date alerts start after the job is live.
+
+Then open **Settings → Phone alerts** on the device and tap **Enable alerts**.
 
 ---
 
@@ -175,6 +225,7 @@ npm run build
 - [ ] Commission dashboard
 
 ### Phase 3 - Growth
+- [x] Push notifications for due dates and follow-ups
 - [ ] PDF receipts for payments
 - [ ] Excel/CSV export for reports
 - [ ] Multi-agent / brokerage support
@@ -188,9 +239,9 @@ npm run build
 |-----------------------------------|----------|------------------------------------|
 | `VITE_SUPABASE_URL`               | Yes      | Your Supabase project URL          |
 | `VITE_SUPABASE_ANON_KEY`          | Yes      | Your Supabase anon/public key      |
+| `VITE_VAPID_PUBLIC_KEY`           | No       | Web Push public key (phone alerts) |
 | `AT_API_KEY`                      | No       | Africa's Talking API key (SMS)     |
 | `AT_USERNAME`                     | No       | Africa's Talking username          |
-| `VITE_FIREBASE_API_KEY`           | No       | Firebase (push notifications)      |
 
 ---
 
