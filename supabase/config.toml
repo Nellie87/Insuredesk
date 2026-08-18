@@ -1,0 +1,6 @@
+# Linked to the Insured project. JWT is checked inside sms-send itself
+# so the browser OPTIONS preflight is not rejected at the gateway.
+project_id = "cmaabsvkvhcsgrmpzund"
+
+[functions.sms-send]
+verify_jwt = false

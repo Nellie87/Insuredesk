@@ -10,6 +10,8 @@ cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url)
+  if (url.pathname.startsWith('/api/')) return
   if (event.request.mode !== 'navigate') return
 
   event.respondWith(

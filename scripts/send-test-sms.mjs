@@ -1,10 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-
-const SANDBOX_HOST = 'https://api.sandbox.africastalking.com'
-const LIVE_HOST = 'https://api.africastalking.com'
-const DEFAULT_MESSAGE =
-  "InsureAgent sandbox test: the SMS reminder path works. Open the Africa's Talking simulator to read this message."
+import { sendAfricasTalkingSms, DEFAULT_TEST_MESSAGE } from './at-sms.mjs'
 
 function loadEnv(filePath) {
   try {
@@ -35,28 +31,10 @@ function arg(name, fallback = '') {
   return process.argv[index + 1] || fallback
 }
 
-function normalizeMsisdn(raw) {
-  const compact = String(raw || '').trim().replace(/[\s\-().]/g, '')
-  if (!compact) throw new Error('Phone number is required. Pass --to 0712345678')
-
-  const plus = compact.startsWith('+')
-  const digits = (plus ? compact.slice(1) : compact).replace(/\D/g, '')
-
-  if (digits.startsWith('254') && digits.length === 12) return `+${digits}`
-  if (digits.startsWith('0') && digits.length === 10) return `+254${digits.slice(1)}`
-  if (digits.length === 9 && digits.startsWith('7')) return `+254${digits}`
-  if (plus && digits.length >= 10 && digits.length <= 15) return `+${digits}`
-
-  throw new Error('Use a Kenyan number like 0712 345678 or +254712345678.')
-}
-
 loadEnv(resolve(process.cwd(), '.env'))
 
-const username = process.env.AT_USERNAME || 'sandbox'
-const apiKey = process.env.AT_API_KEY || ''
-const senderId = process.env.AT_SENDER_ID || ''
 const toArg = arg('to') || process.argv[2]
-const message = arg('message', DEFAULT_MESSAGE)
+const message = arg('message', DEFAULT_TEST_MESSAGE)
 
 if (!toArg || toArg === '--help' || toArg === '-h') {
   console.log(`
@@ -71,51 +49,27 @@ https://developers.africastalking.com/simulator
   process.exit(toArg ? 0 : 1)
 }
 
-if (!apiKey || apiKey.includes('your-africas-talking')) {
-  console.error('Set AT_API_KEY in .env to your Africa\'s Talking sandbox API key.')
-  process.exit(1)
-}
-
-const to = normalizeMsisdn(toArg)
-const host = username === 'sandbox' ? SANDBOX_HOST : LIVE_HOST
-const params = new URLSearchParams()
-params.set('username', username)
-params.set('to', to)
-params.set('message', message.replace(/\*/g, '').trim())
-if (senderId) params.set('from', senderId)
-
-const response = await fetch(`${host}/version1/messaging`, {
-  method: 'POST',
-  headers: {
-    apiKey,
-    Accept: 'application/json',
-    'Content-Type': 'application/x-www-form-urlencoded',
-  },
-  body: params.toString(),
-})
-
-const data = await response.json().catch(() => ({}))
-const first = data?.SMSMessageData?.Recipients?.[0]
-const ok =
-  response.ok &&
-  first &&
-  (first.status === 'Success' || first.statusCode === 100 || first.statusCode === 101)
-
-if (!ok) {
-  console.error('SMS was not accepted.')
-  console.error(first?.status || data?.SMSMessageData?.Message || data)
-  if (username === 'sandbox') {
+try {
+  const result = await sendAfricasTalkingSms({
+    apiKey: process.env.AT_API_KEY,
+    username: process.env.AT_USERNAME || 'sandbox',
+    from: process.env.AT_SENDER_ID || undefined,
+    to: toArg,
+    message,
+  })
+  console.log(`Sent to ${result.to}`)
+  console.log(`Status: ${result.status}`)
+  if (result.messageId) console.log(`Message ID: ${result.messageId}`)
+  if (result.sandbox) {
+    console.log("Read it in the Africa's Talking simulator — it will not reach a real phone.")
+  }
+} catch (error) {
+  console.error(error.message || 'SMS was not accepted.')
+  if ((process.env.AT_USERNAME || 'sandbox') === 'sandbox') {
     console.error('\nSandbox tips:')
     console.error('- AT_USERNAME must be exactly: sandbox')
     console.error('- Add this number in https://developers.africastalking.com/simulator')
     console.error('- Use the sandbox app API key, not a live key')
   }
   process.exit(1)
-}
-
-console.log(`Sent to ${first.number || to}`)
-console.log(`Status: ${first.status} (${first.statusCode})`)
-if (first.messageId) console.log(`Message ID: ${first.messageId}`)
-if (username === 'sandbox') {
-  console.log("Read it in the Africa's Talking simulator — it will not reach a real phone.")
 }

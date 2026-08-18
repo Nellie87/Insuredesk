@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "generate:vapid": "node scripts/generate-vapid-keys.mjs",
-    "sms:test": "node scripts/send-test-sms.mjs"
+    "sms:test": "node scripts/send-test-sms.mjs",
+    "sms:deploy": "npx supabase functions deploy sms-send"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

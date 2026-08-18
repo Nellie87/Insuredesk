@@ -221,10 +221,14 @@ npm run sms:test -- --to 0712345678
 4. To send from the app, copy the same secrets into **Supabase → Edge Functions → Secrets** (`AT_API_KEY`, `AT_USERNAME`, optional `AT_SENDER_ID`), then deploy:
 
 ```bash
-supabase functions deploy sms-send
+npx supabase functions deploy sms-send
 ```
 
+The `supabase` CLI is not installed globally on Windows. `npx` downloads it for that command. After deploy, set `AT_API_KEY` and `AT_USERNAME` in **Supabase → Edge Functions → Secrets**.
+
 After that, **Settings → SMS sandbox** sends a canned test, and each calendar item has an **SMS** button that sends the real reminder text.
+
+While `npm run dev` is running, the app sends SMS through the local Vite server (same keys as `npm run sms:test`), so you can test in the browser without CORS. Restart the dev server after pulling this change.
 
 ---
 
