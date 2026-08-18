@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "generate:vapid": "node scripts/generate-vapid-keys.mjs"
+    "generate:vapid": "node scripts/generate-vapid-keys.mjs",
+    "sms:test": "node scripts/send-test-sms.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

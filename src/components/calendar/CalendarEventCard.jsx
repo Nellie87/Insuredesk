@@ -13,6 +13,8 @@ const STATUS_STYLES = {
 export default function CalendarEventCard({
   event,
   whatsAppLink,
+  onSendSms,
+  smsBusy = false,
   compact = false,
 }) {
   const colors = getEventColors(event.type)
@@ -91,6 +93,16 @@ export default function CalendarEventCard({
           >
             WhatsApp
           </a>
+        )}
+        {onSendSms && (event.client?.phone || event.prospect?.phone) && (
+          <button
+            type="button"
+            onClick={() => onSendSms(event)}
+            disabled={smsBusy}
+            className="rounded-xl border border-primary-100 bg-white/80 px-3 py-1.5 text-xs font-semibold text-primary-700 disabled:opacity-50"
+          >
+            {smsBusy ? 'Sending SMS...' : 'SMS'}
+          </button>
         )}
       </div>
     </div>

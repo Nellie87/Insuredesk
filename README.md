@@ -206,6 +206,28 @@ Then open **Settings → Phone alerts** on the device and tap **Enable alerts**.
 
 ---
 
+## SMS sandbox (Africa's Talking)
+
+Use this to prove client reminder SMS before going live. Sandbox messages **do not reach real phones**.
+
+1. In `.env` set `AT_USERNAME=sandbox` and `AT_API_KEY` to the **sandbox** app key from [Africa's Talking](https://account.africastalking.com/).
+2. Add your test number in the [simulator](https://developers.africastalking.com/simulator).
+3. Send a test from the terminal (no deploy needed):
+
+```bash
+npm run sms:test -- --to 0712345678
+```
+
+4. To send from the app, copy the same secrets into **Supabase → Edge Functions → Secrets** (`AT_API_KEY`, `AT_USERNAME`, optional `AT_SENDER_ID`), then deploy:
+
+```bash
+supabase functions deploy sms-send
+```
+
+After that, **Settings → SMS sandbox** sends a canned test, and each calendar item has an **SMS** button that sends the real reminder text.
+
+---
+
 ## Roadmap
 
 ### Phase 1 - MVP ✅
@@ -220,6 +242,7 @@ Then open **Settings → Phone alerts** on the device and tap **Enable alerts**.
 ### Phase 2 - Automation
 - [ ] Full client add/edit forms with vehicle details
 - [ ] Payment logging UI
+- [x] Africa's Talking sandbox SMS test path
 - [ ] Automated WhatsApp reminders (Africa's Talking / Twilio)
 - [ ] Policy renewal alerts
 - [ ] Commission dashboard
@@ -241,7 +264,8 @@ Then open **Settings → Phone alerts** on the device and tap **Enable alerts**.
 | `VITE_SUPABASE_ANON_KEY`          | Yes      | Your Supabase anon/public key      |
 | `VITE_VAPID_PUBLIC_KEY`           | No       | Web Push public key (phone alerts) |
 | `AT_API_KEY`                      | No       | Africa's Talking API key (SMS)     |
-| `AT_USERNAME`                     | No       | Africa's Talking username          |
+| `AT_USERNAME`                     | No       | `sandbox` for PoC, live username later |
+| `AT_SENDER_ID`                    | No       | Optional SMS sender ID             |
 
 ---
 

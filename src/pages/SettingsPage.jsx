@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import PageShell from '../components/layout/PageShell'
 import { INPUT_SPACED as INPUT, LABEL } from '../constants/formStyles'
 import PushNotificationsCard from '../components/settings/PushNotificationsCard'
+import SmsSandboxCard from '../components/settings/SmsSandboxCard'
 import { disablePushForThisDevice } from '../lib/push'
 
 const QUICK_LINKS = [
@@ -165,6 +166,8 @@ export default function SettingsPage() {
 
         <div className="space-y-4">
           <PushNotificationsCard />
+
+          <SmsSandboxCard />
 
           <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
             <h2 className="text-sm font-bold text-slate-900">Commission rates</h2>

@@ -2,11 +2,14 @@ import { useMemo, useState } from 'react'
 import { format, parseISO, startOfMonth, isSameMonth } from 'date-fns'
 import { useReminders } from '../hooks/useReminders'
 import { useAppStore } from '../store/appStore'
+import { toast } from '../store/toastStore'
 import {
   buildReminderMessage,
   paymentReminderTriggerForDueDate,
+  toSmsMessage,
   whatsappUrl,
 } from '../utils/reminders'
+import { sendSms } from '../lib/sms'
 import {
   downloadIcsFile,
   GOOGLE_CALENDAR_IMPORT_URL,
@@ -27,9 +30,8 @@ const FILTERS = [
   { value: 'reminder', label: 'Scheduled' },
 ]
 
-function getWhatsAppLink(event, agent) {
-  const phone = event.client?.phone ?? event.prospect?.phone
-  if (!phone || !agent) return null
+function getReminderMessage(event, agent) {
+  if (!agent) return null
 
   let message = event.reminder?.message
 
@@ -54,7 +56,13 @@ function getWhatsAppLink(event, agent) {
     message = `Hello ${event.prospect.full_name.split(' ')[0]}, this is ${agent.name}. Following up on your insurance enquiry. Please call or WhatsApp me on ${agent.phone}.`
   }
 
-  if (!message) return null
+  return message || null
+}
+
+function getWhatsAppLink(event, agent) {
+  const phone = event.client?.phone ?? event.prospect?.phone
+  const message = getReminderMessage(event, agent)
+  if (!phone || !message) return null
   return whatsappUrl(phone, message)
 }
 
@@ -68,6 +76,7 @@ export default function RemindersPage() {
   const [selectedDate, setSelectedDate] = useState(
     format(new Date(), 'yyyy-MM-dd'),
   )
+  const [smsSendingId, setSmsSendingId] = useState(null)
 
   const filteredEvents = useMemo(() => {
     if (filter === 'all') return calendarEvents
@@ -110,6 +119,29 @@ export default function RemindersPage() {
     const today = format(new Date(), 'yyyy-MM-dd')
     setMonth(startOfMonth(new Date()))
     setSelectedDate(today)
+  }
+
+  const handleSendSms = async event => {
+    const phone = event.client?.phone ?? event.prospect?.phone
+    const message = getReminderMessage(event, agent)
+    if (!phone || !message) {
+      toast('This item has no phone number or message.', 'error')
+      return
+    }
+
+    setSmsSendingId(event.id)
+    try {
+      const result = await sendSms({ to: phone, message: toSmsMessage(message) })
+      toast(
+        result?.sandbox
+          ? 'SMS sent. Check the Africa’s Talking simulator.'
+          : `SMS sent to ${result?.to || phone}.`,
+      )
+    } catch (err) {
+      toast(err.message || 'Could not send SMS.', 'error')
+    } finally {
+      setSmsSendingId(null)
+    }
   }
 
   if (loading) {
@@ -231,6 +263,8 @@ export default function RemindersPage() {
                   key={event.id}
                   event={event}
                   whatsAppLink={getWhatsAppLink(event, agent)}
+                  onSendSms={handleSendSms}
+                  smsBusy={smsSendingId === event.id}
                 />
               ))
             )}
@@ -253,6 +287,8 @@ export default function RemindersPage() {
                     key={event.id}
                     event={event}
                     whatsAppLink={getWhatsAppLink(event, agent)}
+                    onSendSms={handleSendSms}
+                    smsBusy={smsSendingId === event.id}
                   />
                 ))}
               </div>

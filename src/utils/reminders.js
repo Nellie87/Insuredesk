@@ -151,18 +151,46 @@ export function buildReminderMessage({
 }
 
 /**
+ * Normalize a Kenyan (or already-international) number to +E.164.
+ * @param {string} phone
+ * @returns {string}
+ */
+export function normalizeMsisdn(phone) {
+  const compact = String(phone || '').trim().replace(/[\s\-().]/g, '')
+  if (!compact) throw new Error('Phone number is required.')
+
+  const plus = compact.startsWith('+')
+  const digits = (plus ? compact.slice(1) : compact).replace(/\D/g, '')
+
+  if (digits.startsWith('254') && digits.length === 12) return `+${digits}`
+  if (digits.startsWith('0') && digits.length === 10) return `+254${digits.slice(1)}`
+  if (digits.length === 9 && digits.startsWith('7')) return `+254${digits}`
+  if (plus && digits.length >= 10 && digits.length <= 15) return `+${digits}`
+
+  throw new Error('Use a Kenyan number like 0712 345678 or +254712345678.')
+}
+
+/** Strip WhatsApp *bold* markers for SMS. */
+export function toSmsMessage(message) {
+  return String(message || '')
+    .replace(/\*/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/**
  * Generates a WhatsApp click-to-chat URL
  * @param {string} phone - in format 0712345678 or +254712345678
  * @param {string} message
  * @returns {string}
  */
 export function whatsappUrl(phone, message) {
-  // Normalize to international format
-  const normalized = phone.startsWith('+')
-    ? phone.replace('+', '')
-    : phone.startsWith('0')
-    ? `254${phone.slice(1)}`
-    : phone
-
+  let normalized
+  try {
+    normalized = normalizeMsisdn(phone).replace('+', '')
+  } catch {
+    normalized = String(phone || '').replace(/\D/g, '')
+  }
+  if (!normalized) return null
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`
 }
