@@ -4,7 +4,7 @@ import { formatNumberInput, parseNumberInput } from '../utils/numberInput'
 import { toast } from '../store/toastStore'
 import { format } from 'date-fns'
 import PageShell from '../components/layout/PageShell'
-import { INPUT_SPACED as INPUT, LABEL, BTN_PRIMARY } from '../constants/formStyles'
+import { INPUT_SPACED as INPUT, LABEL } from '../constants/formStyles'
 
 const DEFAULT_INPUT = {
   total_premium: '',
@@ -69,17 +69,10 @@ export default function CalculatorPage() {
 
   return (
     <PageShell>
-      <div className="lg:hidden">
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
-          Tools
-        </p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
-          Policy calculator
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Fields marked <span className="text-red-600">*</span> are required.
-        </p>
-      </div>
+      <p className="text-sm text-ink-muted">
+        Estimate down payment, installments, and commission. Fields marked{' '}
+        <span className="text-danger-700">*</span> are required.
+      </p>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">

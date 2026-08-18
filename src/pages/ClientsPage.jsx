@@ -11,6 +11,7 @@ import SearchField from '../components/ui/SearchField'
 import StatusBadge from '../components/ui/StatusBadge'
 import LottieLoader from '../components/ui/LottieLoader'
 import PageShell from '../components/layout/PageShell'
+import PageHeader from '../components/layout/PageHeader'
 
 const FILTERS = [
   'all',
@@ -52,33 +53,25 @@ export default function ClientsPage() {
 
   return (
     <PageShell>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary-600 lg:hidden">
-            Clients
-          </p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900 lg:hidden">
-            Portfolio
-          </h1>
-          <p className="mt-1 hidden text-sm text-slate-500 lg:block">
-            Search and manage insured clients and policies.
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Link
-            to="/clients/import"
-            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-soft transition hover:border-primary-200 hover:bg-primary-50"
-          >
-            Import
-          </Link>
-          <Link
-            to="/clients/add"
-            className="rounded-xl bg-primary-600 px-3.5 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700"
-          >
-            + Add client
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        description="Search and manage insured clients and policies."
+        actions={
+          <>
+            <Link
+              to="/clients/import"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-soft transition hover:border-primary-200 hover:bg-primary-50 sm:flex-none"
+            >
+              Import
+            </Link>
+            <Link
+              to="/clients/add"
+              className="flex-1 rounded-xl bg-primary-600 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700 sm:flex-none"
+            >
+              Add client
+            </Link>
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="min-w-0 flex-1">
@@ -96,7 +89,7 @@ export default function ClientsPage() {
             key={f}
             type="button"
             onClick={() => setFilter(f)}
-            className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors ${
+            className={`min-h-10 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-colors ${
               filter === f
                 ? 'bg-primary-600 text-white shadow-soft'
                 : 'border border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'
@@ -113,7 +106,7 @@ export default function ClientsPage() {
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white/80 py-14 text-center text-sm text-slate-400">
           {search
             ? 'No clients found for that search.'
-            : 'No clients yet. Tap + to add your first one.'}
+            : 'No clients yet. Add your first one.'}
         </div>
       ) : (
         <>

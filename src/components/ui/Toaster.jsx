@@ -1,9 +1,9 @@
 import { useToastStore } from '../../store/toastStore'
 
 const STYLES = {
-  success: 'bg-primary-700 text-white',
-  error: 'bg-red-600 text-white',
-  info: 'bg-slate-800 text-white',
+  success: 'bg-primary-800 text-white',
+  error: 'bg-danger-700 text-white',
+  info: 'bg-ink text-white',
 }
 
 export default function Toaster() {
@@ -14,7 +14,7 @@ export default function Toaster() {
 
   return (
     <div
-      className="pointer-events-none fixed top-4 left-1/2 z-[100] w-full max-w-sm -translate-x-1/2 space-y-2 px-4 lg:left-auto lg:right-6 lg:translate-x-0"
+      className="pointer-events-none fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 z-[100] w-full max-w-sm -translate-x-1/2 space-y-2 px-4 lg:bottom-auto lg:left-auto lg:right-6 lg:top-4 lg:translate-x-0"
       aria-live="polite"
     >
       {toasts.map(item => (

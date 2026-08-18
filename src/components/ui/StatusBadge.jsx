@@ -1,12 +1,12 @@
 const STYLES = {
-  active: 'bg-emerald-50 text-emerald-700',
-  overdue: 'bg-red-50 text-danger-700',
-  expiring_soon: 'bg-amber-50 text-warning-700',
-  fully_paid: 'bg-emerald-50 text-emerald-700',
-  lapsed: 'bg-slate-100 text-slate-500',
-  paid: 'bg-emerald-50 text-emerald-700',
-  due: 'bg-amber-50 text-warning-700',
-  pending: 'bg-slate-100 text-slate-600',
+  active: 'bg-success-50 text-success-700',
+  overdue: 'bg-danger-50 text-danger-700',
+  expiring_soon: 'bg-warning-50 text-warning-700',
+  fully_paid: 'bg-success-50 text-success-700',
+  lapsed: 'bg-stone-100 text-ink-muted',
+  paid: 'bg-success-50 text-success-700',
+  due: 'bg-warning-50 text-warning-700',
+  pending: 'bg-stone-100 text-ink-muted',
 }
 
 const LABELS = {
@@ -23,8 +23,8 @@ const LABELS = {
 export default function StatusBadge({ status }) {
   return (
     <span
-      className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${
-        STYLES[status] ?? 'bg-slate-100 text-slate-500'
+      className={`inline-flex rounded-md px-2 py-0.5 text-2xs font-medium ${
+        STYLES[status] ?? 'bg-stone-100 text-ink-muted'
       }`}
     >
       {LABELS[status] ?? status}

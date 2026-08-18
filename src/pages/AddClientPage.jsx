@@ -95,10 +95,10 @@ function Field({ label, required, hint, children, className = '' }) {
 function StepHeader({ step }) {
   return (
     <div className="mx-auto w-full max-w-4xl text-left sm:text-center">
-      <h2 className="text-xl font-bold tracking-tight text-slate-800 sm:text-2xl">
+      <h2 className="font-display text-xl text-ink sm:text-2xl">
         {STEPS[step].title}
       </h2>
-      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500 sm:mx-auto">
+      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-muted sm:mx-auto">
         {STEPS[step].caption}
       </p>
     </div>
@@ -560,9 +560,9 @@ export default function AddClientPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 lg:px-8">
         <Link
           to="/clients"
-          className="inline-flex items-center text-sm font-semibold text-primary-600 transition hover:text-primary-700"
+          className="hidden items-center text-sm font-semibold text-primary-600 transition hover:text-primary-700 lg:inline-flex"
         >
-          ← Back to portfolio
+          ← Back to clients
         </Link>
         <p className="text-sm font-medium text-slate-400">
           Step {step + 1} of {STEPS.length}
@@ -1118,13 +1118,13 @@ export default function AddClientPage() {
 
         {step === 5 && (
           <div className="space-y-4">
-            <div className="rounded-2xl bg-slate-950 px-5 py-5 text-white sm:px-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
+            <div className="rounded-2xl bg-primary-900 px-5 py-5 text-white sm:px-6">
+              <p className="text-2xs font-medium uppercase tracking-[0.1em] text-white/50">
                 Ready to save
               </p>
               <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
-                  <h3 className="truncate text-2xl font-bold tracking-tight">
+                  <h3 className="truncate font-display text-2xl font-semibold">
                     {form.name || '-'}
                   </h3>
                   <p className="mt-1 text-base text-white/70">
@@ -1139,7 +1139,7 @@ export default function AddClientPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/45">
                     Total premium
                   </p>
-                  <p className="mt-1 text-2xl font-bold tracking-tight">
+                  <p className="mt-1 font-sans text-xl font-semibold tracking-tight">
                     {formatKSh(premiumNumber)}
                   </p>
                 </div>

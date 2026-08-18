@@ -83,30 +83,16 @@ export default function ImportClientsPage() {
 
   return (
     <PageShell narrow>
-      <div>
+      <div className="hidden lg:block">
         <Link
           to="/clients"
-          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-bold text-primary-700 shadow-sm transition hover:border-primary-200 hover:bg-primary-50"
+          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-primary-700 shadow-sm transition hover:border-primary-200 hover:bg-primary-50"
         >
-          ← Back to portfolio
+          ← Back to clients
         </Link>
       </div>
 
-      <div className="lg:hidden">
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
-          Bulk upload
-        </p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
-          Import from Excel
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Upload the agent&apos;s Preliminary renewals sheet. Each row becomes
-          one client. Vehicle plate / make / insurer can be filled in later if
-          the sheet does not include them.
-        </p>
-      </div>
-
-      <p className="hidden text-sm text-slate-500 lg:block">
+      <p className="text-sm text-ink-muted">
         Upload the agent&apos;s Preliminary renewals sheet. Each row becomes one
         client. Vehicle plate / make / insurer can be filled in later if the
         sheet does not include them.

@@ -32,18 +32,18 @@ export default function MonthCalendar({
         <button
           type="button"
           onClick={() => onMonthChange(addMonths(month, -1))}
-          className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-lg leading-none text-slate-600"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-lg leading-none text-slate-600"
           aria-label="Previous month"
         >
           ‹
         </button>
-        <div className="text-sm font-bold tracking-tight text-slate-900">
+        <div className="text-sm font-semibold text-ink">
           {format(month, 'MMMM yyyy')}
         </div>
         <button
           type="button"
           onClick={() => onMonthChange(addMonths(month, 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-lg leading-none text-slate-600"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-lg leading-none text-slate-600"
           aria-label="Next month"
         >
           ›
@@ -56,7 +56,8 @@ export default function MonthCalendar({
             key={day}
             className="py-2 text-center text-xs font-bold uppercase tracking-wide text-slate-400"
           >
-            {day}
+            {day.slice(0, 1)}
+            <span className="hidden sm:inline">{day.slice(1)}</span>
           </div>
         ))}
       </div>
@@ -74,7 +75,7 @@ export default function MonthCalendar({
               key={dateKey}
               type="button"
               onClick={() => onSelectDate(dateKey)}
-              className={`min-h-[72px] border-b border-r border-slate-50 p-1 text-left transition-colors ${
+              className={`min-h-[46px] border-b border-r border-slate-50 p-1 text-left transition-colors sm:min-h-[72px] ${
                 !inMonth ? 'bg-slate-50/80' : 'bg-white'
               } ${
                 selected
@@ -83,7 +84,7 @@ export default function MonthCalendar({
               }`}
             >
               <div
-                className={`mb-0.5 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                className={`mb-0.5 mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold sm:mx-0 ${
                   today
                     ? 'bg-primary-800 text-white'
                     : inMonth
@@ -94,7 +95,7 @@ export default function MonthCalendar({
                 {format(day, 'd')}
               </div>
 
-              <div className="space-y-0.5 px-0.5">
+              <div className="hidden space-y-0.5 px-0.5 sm:block">
                 {dayEvents.slice(0, 2).map(event => {
                   const c = getEventColors(event.type)
                   return (
@@ -112,6 +113,19 @@ export default function MonthCalendar({
                   </span>
                 )}
               </div>
+              {dayEvents.length > 0 && (
+                <div className="mt-0.5 flex flex-wrap justify-center gap-0.5 sm:hidden">
+                  {dayEvents.slice(0, 3).map(event => {
+                    const c = getEventColors(event.type)
+                    return (
+                      <span
+                        key={event.id}
+                        className={`h-1.5 w-1.5 rounded-full ${c.dot}`}
+                      />
+                    )
+                  })}
+                </div>
+              )}
             </button>
           )
         })}

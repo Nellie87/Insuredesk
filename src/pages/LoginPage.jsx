@@ -76,33 +76,33 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas bg-login-atmosphere px-4 py-10">
-      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-primary-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-primary-300/30 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-primary-200/50 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-warning-50/80 blur-3xl" />
 
       <div className="relative w-full max-w-lg overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/95 shadow-panel backdrop-blur-sm">
-        <div className="border-b border-slate-100 px-6 pb-5 pt-7 sm:px-8">
+        <div className="border-b border-stone-100 px-6 pb-5 pt-7 sm:px-8">
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-step-active text-sm font-extrabold text-white shadow-soft">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-step-active text-sm font-semibold text-white shadow-soft">
               IA
             </div>
             <div>
-              <div className="text-base font-extrabold tracking-tight text-slate-900">
+              <div className="font-display text-lg text-ink">
                 InsureAgent
               </div>
-              <div className="text-xs font-medium text-slate-400">
+              <div className="text-2xs font-medium text-ink-faint">
                 Agent workspace
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100/80 p-1">
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-canvas p-1">
             <button
               type="button"
               onClick={() => switchMode('signin')}
-              className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+              className={`rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                 !isSignUp
-                  ? 'bg-step-active text-white shadow-soft'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-step-active font-semibold text-white shadow-soft'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
               Sign in
@@ -110,10 +110,10 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => switchMode('signup')}
-              className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+              className={`rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                 isSignUp
-                  ? 'bg-step-active text-white shadow-soft'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-step-active font-semibold text-white shadow-soft'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
               Create account
@@ -122,26 +122,26 @@ export default function LoginPage() {
         </div>
 
         <div className="px-6 py-6 sm:px-8 sm:py-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary-600">
+          <p className="text-2xs font-medium uppercase tracking-[0.08em] text-primary-600">
             {isSignUp ? 'Step 1' : 'Welcome back'}
           </p>
-          <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="mt-1.5 font-display text-[1.75rem] text-ink">
             {isSignUp ? 'Your profile' : 'Sign in'}
           </h1>
-          <p className="mt-2 text-sm leading-relaxed text-slate-500">
+          <p className="mt-2 text-sm leading-relaxed text-ink-muted">
             {isSignUp
               ? 'Enter the login information for your account. You can manage clients and policies right away.'
               : 'Sign in to manage clients, policies, payments, and renewals.'}
           </p>
 
           {error && (
-            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+            <div className="mt-4 rounded-xl border border-danger-50 bg-danger-50 px-3.5 py-2.5 text-sm text-danger-700">
               {error}
             </div>
           )}
 
           {info && (
-            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
+            <div className="mt-4 rounded-xl border border-success-50 bg-success-50 px-3.5 py-2.5 text-sm text-success-700">
               {info}
             </div>
           )}

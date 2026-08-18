@@ -8,8 +8,27 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  button,
+  a,
+  [role='button'] {
+    touch-action: manipulation;
+  }
+
   body {
-    @apply bg-canvas text-slate-900 font-sans antialiased;
+    @apply font-sans antialiased;
+    background-color: theme('colors.canvas.DEFAULT');
+    color: theme('colors.ink.DEFAULT');
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  .font-display {
+    font-family: Fraunces, Georgia, serif;
+    font-optical-sizing: auto;
+    font-weight: 600;
+    letter-spacing: -0.03em;
   }
 
   input[type="date"],
@@ -21,7 +40,7 @@
   input[type="tel"],
   select,
   textarea {
-    @apply text-base; /* prevents iOS zoom on focus */
+    font-size: 16px; /* prevents iOS zoom on focus */
   }
 
   /* Prevent mouse-wheel from changing focused number / range values */
@@ -43,21 +62,30 @@
   }
 
   .surface-panel {
-    @apply rounded-2xl border border-slate-200/80 bg-white shadow-card;
+    @apply rounded-2xl border border-stone-200/80 bg-white shadow-card;
   }
 
   .surface-table {
-    @apply overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card;
+    @apply overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-card;
   }
 
   .table-head {
-    @apply border-b border-slate-200/80 bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500;
+    @apply border-b border-stone-200/80 text-left font-medium uppercase;
+    background-color: color-mix(in srgb, theme('colors.canvas.DEFAULT') 80%, transparent);
+    color: theme('colors.ink.muted');
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    letter-spacing: 0.06em;
   }
 }
 
 @layer utilities {
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
   }
 
   .hide-scrollbar {
@@ -67,5 +95,20 @@
 
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+
+  .sheet-up {
+    animation: sheet-up 0.22s ease-out;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(16%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
