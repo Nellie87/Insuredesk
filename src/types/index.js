@@ -195,3 +195,14 @@ export interface PendingSyncItem {
   payload: Record<string, unknown>
   created_at: string
 }
+
+// ─── Add-client sessions (local drafts) ──────────────────────────────────────
+
+export interface ClientSession {
+  id: string
+  agent_id: string
+  step: number
+  form: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}

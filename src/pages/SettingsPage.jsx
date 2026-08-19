@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store/appStore'
 import { toast } from '../store/toastStore'
 import { signOut, updateAgentProfile } from '../lib/supabase'
@@ -9,12 +9,6 @@ import { INPUT_SPACED as INPUT, LABEL } from '../constants/formStyles'
 import PushNotificationsCard from '../components/settings/PushNotificationsCard'
 import SmsSandboxCard from '../components/settings/SmsSandboxCard'
 import { disablePushForThisDevice } from '../lib/push'
-
-const QUICK_LINKS = [
-  { to: '/calculator', label: 'Premium calculator' },
-  { to: '/prospects', label: 'Prospects pipeline' },
-  { to: '/commissions', label: 'Commission dashboard' },
-]
 
 export default function SettingsPage() {
   const navigate = useNavigate()
@@ -87,19 +81,7 @@ export default function SettingsPage() {
 
   return (
     <PageShell narrow>
-      <div className="lg:hidden">
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
-          Account
-        </p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
-          Settings
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Your agent profile and app preferences.
-        </p>
-      </div>
-
-      <p className="hidden text-sm text-slate-500 lg:block">
+      <p className="hidden text-sm text-ink-muted lg:block">
         Your agent profile and app preferences.
       </p>
 
@@ -211,21 +193,6 @@ export default function SettingsPage() {
           </section>
         </div>
       </div>
-
-      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card lg:hidden">
-        <h2 className="px-4 pb-2 pt-4 text-sm font-bold text-slate-900">
-          Quick links
-        </h2>
-        {QUICK_LINKS.map(link => (
-          <Link
-            key={link.to}
-            to={link.to}
-            className="block border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 active:bg-slate-50"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </section>
 
       <button
         type="button"

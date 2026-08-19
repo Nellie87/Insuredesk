@@ -20,6 +20,7 @@ import MonthCalendar, {
 import CalendarEventCard from '../components/calendar/CalendarEventCard'
 import LottieLoader from '../components/ui/LottieLoader'
 import PageShell from '../components/layout/PageShell'
+import PageHeader from '../components/layout/PageHeader'
 import PushNotificationsCard from '../components/settings/PushNotificationsCard'
 
 const FILTERS = [
@@ -150,33 +151,24 @@ export default function RemindersPage() {
 
   return (
     <PageShell>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 lg:hidden">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">
-            Schedule
-          </p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
-            Calendar
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Payments, renewals, and follow-ups at a glance.
-          </p>
-        </div>
-        <p className="hidden text-sm text-slate-500 lg:block">
-          Payments, renewals, and follow-ups at a glance.
-        </p>
-        <button
-          type="button"
-          onClick={handleToday}
-          className="ml-auto shrink-0 rounded-xl border border-primary-100 bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary-700 transition hover:bg-primary-100"
-        >
-          Today
-        </button>
-      </div>
+      <PageHeader
+        description="Payments, renewals, and follow-ups at a glance."
+        actions={
+          <button
+            type="button"
+            onClick={handleToday}
+            className="rounded-xl border border-primary-100 bg-primary-50 px-3.5 py-2.5 text-sm font-semibold text-primary-700 transition hover:bg-primary-100"
+          >
+            Today
+          </button>
+        }
+      />
 
       <CalendarLegend />
 
-      <PushNotificationsCard compact />
+      <div className="hidden lg:block">
+        <PushNotificationsCard compact />
+      </div>
 
       <div className="flex gap-2 sm:max-w-xs">
         {['month', 'agenda'].map(v => (
@@ -212,13 +204,15 @@ export default function RemindersPage() {
         ))}
       </div>
 
-      <div className="space-y-2 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-card">
-        <div className="text-sm font-bold text-slate-900">Google Calendar</div>
-        <p className="text-xs text-slate-500">
-          Export all events as a file and import into Google Calendar, or add
-          individual events with the button on each item.
+      <details className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-card">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          Export to Google Calendar
+        </summary>
+        <p className="mt-2 text-xs text-slate-500">
+          Download all events as a file and import into Google Calendar, or add
+          individual events from each item.
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => downloadIcsFile(filteredEvents)}
@@ -235,7 +229,7 @@ export default function RemindersPage() {
             Open Google import
           </a>
         </div>
-      </div>
+      </details>
 
       {view === 'month' ? (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">

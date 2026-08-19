@@ -1,7 +1,7 @@
 import { openDB } from 'idb'
 
 const DB_NAME = 'insure-agent-db'
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 // Opens (or upgrades) the local IndexedDB database
 export async function getDB() {
@@ -61,6 +61,13 @@ export async function getDB() {
         const reminderStore = db.createObjectStore('reminders', { keyPath: 'id' })
         reminderStore.createIndex('agent_id', 'agent_id')
         reminderStore.createIndex('scheduled_at', 'scheduled_at')
+      }
+
+      // In-progress add-client sessions (v4) — local drafts, not synced
+      if (!db.objectStoreNames.contains('client_sessions')) {
+        const sessionStore = db.createObjectStore('client_sessions', { keyPath: 'id' })
+        sessionStore.createIndex('agent_id', 'agent_id')
+        sessionStore.createIndex('updated_at', 'updated_at')
       }
 
       if (oldVersion < 3 && transaction) {

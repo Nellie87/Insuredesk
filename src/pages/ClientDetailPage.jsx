@@ -1763,7 +1763,7 @@ export default function ClientDetailPage() {
         <div className="mb-4">
           <Link
             to="/clients"
-            className="inline-flex items-center text-xs font-semibold text-slate-500 hover:text-slate-700"
+            className="hidden items-center text-xs font-semibold text-slate-500 hover:text-slate-700 lg:inline-flex"
           >
             ← Back to Clients
           </Link>
@@ -1900,7 +1900,7 @@ export default function ClientDetailPage() {
     <PageShell>
       <div className="space-y-6">
         {/* Navigation Breadcrumb */}
-        <div>
+        <div className="hidden lg:block">
           <Link
             to="/clients"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-slate-800"
@@ -1908,7 +1908,7 @@ export default function ClientDetailPage() {
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Client Portfolio
+            Back to clients
           </Link>
         </div>
 
@@ -1924,7 +1924,7 @@ export default function ClientDetailPage() {
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                      <h1 className="font-display text-xl text-ink">
                         {client.name}
                       </h1>
                       <StatusBadge status={client.status} />
@@ -2055,43 +2055,43 @@ export default function ClientDetailPage() {
 
         {/* Portfolio Key Financial Metrics */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-card">
+            <p className="text-2xs font-medium uppercase tracking-[0.06em] text-ink-faint">
               Total Premium
             </p>
-            <p className="mt-1.5 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+            <p className="mt-1.5 font-sans text-lg font-semibold text-ink sm:text-xl">
               {formatKSh(totalPremium)}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-card">
+            <p className="text-2xs font-medium uppercase tracking-[0.06em] text-ink-faint">
               Total Paid
             </p>
-            <p className="mt-1.5 text-xl font-bold tracking-tight text-emerald-600 sm:text-2xl">
+            <p className="mt-1.5 font-sans text-lg font-semibold text-success-700 sm:text-xl">
               {formatKSh(totalPaid)}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-card">
+            <p className="text-2xs font-medium uppercase tracking-[0.06em] text-ink-faint">
               {totalOverpayment > 0.01 ? 'Overpayment' : 'Outstanding'}
             </p>
             <p
-              className={`mt-1.5 text-xl font-bold tracking-tight sm:text-2xl ${
+              className={`mt-1.5 font-sans text-lg font-semibold sm:text-xl ${
                 totalOverpayment > 0.01
-                  ? 'text-sky-700'
+                  ? 'text-primary-700'
                   : totalOutstanding <= 0
-                    ? 'text-emerald-600'
-                    : 'text-amber-600'
+                    ? 'text-success-700'
+                    : 'text-warning-700'
               }`}
             >
               {formatKSh(totalOverpayment > 0.01 ? totalOverpayment : totalOutstanding)}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-card">
+            <p className="text-2xs font-medium uppercase tracking-[0.06em] text-ink-faint">
               Active Policies
             </p>
-            <p className="mt-1.5 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+            <p className="mt-1.5 font-sans text-lg font-semibold text-ink sm:text-xl">
               {vehicles.length}
             </p>
             {nextRenewal && (

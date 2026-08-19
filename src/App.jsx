@@ -31,13 +31,13 @@ function SplashScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas bg-login-atmosphere">
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-step-active text-sm font-extrabold text-white shadow-soft">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-step-active text-sm font-semibold text-white shadow-soft">
           IA
         </div>
-        <div className="mb-1 text-2xl font-extrabold tracking-tight text-slate-900">
+        <div className="mb-1 font-display text-2xl text-ink">
           InsureAgent
         </div>
-        <div className="text-sm font-medium text-slate-500">Loading...</div>
+        <div className="text-sm font-medium text-ink-muted">Loading...</div>
       </div>
     </div>
   )
