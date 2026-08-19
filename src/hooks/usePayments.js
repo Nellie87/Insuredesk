@@ -27,7 +27,11 @@ async function findSchedule({ scheduleId, vehicleId, clientId }) {
   }
   if (!fromStore && vehicleId) {
     const all = await localGetAll('payment_schedules')
-    fromStore = all.find(schedule => schedule.vehicle_id === vehicleId) ?? null
+    fromStore = all
+      .filter(schedule => schedule.vehicle_id === vehicleId)
+      .sort((a, b) =>
+        String(b.created_at || '').localeCompare(String(a.created_at || '')),
+      )[0] ?? null
   }
 
   if (fromClient && fromStore) {

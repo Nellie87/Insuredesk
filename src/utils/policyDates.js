@@ -1,22 +1,89 @@
-/**
- * Annual policy expiry / renewal date.
- * Cover starting on the 8th renews on the 7th next year (start + 1 year − 1 day).
- * e.g. 2025-08-08 → 2026-08-07
- */
-export function defaultExpiryDate(startDate) {
-  if (!startDate) return ''
+export const COVER_MONTH_OPTIONS = [1, 2, 3, 4, 6, 12]
 
-  const [year, month, day] = String(startDate)
+export function clampCoverMonths(value) {
+  const months = Math.round(Number(value) || 12)
+  return Math.min(12, Math.max(1, months))
+}
+
+export function getCoverMonths(vehicle) {
+  return clampCoverMonths(vehicle?.cover_months || 12)
+}
+
+export function coverMonthsLabel(months) {
+  const n = clampCoverMonths(months)
+  if (n === 12) return '1 year'
+  if (n === 1) return '1 month'
+  return `${n} months`
+}
+
+function parseIsoParts(value) {
+  const [year, month, day] = String(value || '')
     .slice(0, 10)
     .split('-')
     .map(Number)
+  if (!year || !month || !day) return null
+  return { year, month, day }
+}
 
-  if (!year || !month || !day) return ''
+export function todayIso(date = new Date()) {
+  return toIsoDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
+}
 
-  const date = new Date(year + 1, month - 1, day)
+export function addIsoDays(iso, days) {
+  const parsed = parseIsoParts(iso)
+  if (!parsed) return ''
+  const date = new Date(parsed.year, parsed.month - 1, parsed.day + Number(days || 0))
+  return toIsoDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
+}
+
+export function compareIsoDates(a, b) {
+  return String(a || '')
+    .slice(0, 10)
+    .localeCompare(String(b || '').slice(0, 10))
+}
+
+export function isCoverExpired(expiryDate, today = todayIso()) {
+  if (!expiryDate) return false
+  return compareIsoDates(expiryDate, today) < 0
+}
+
+export function isCoverExpiringSoon(expiryDate, withinDays = 30, today = todayIso()) {
+  if (!expiryDate || isCoverExpired(expiryDate, today)) return false
+  return compareIsoDates(expiryDate, addIsoDays(today, withinDays)) <= 0
+}
+
+/**
+ * If cover is still in force, start the day after expiry.
+ * If it has already lapsed, start today (gap stays visible on the old period).
+ */
+export function suggestedRenewalStart(expiryDate, today = todayIso()) {
+  if (!expiryDate) return today
+  const dayAfter = addIsoDays(expiryDate, 1)
+  return compareIsoDates(dayAfter, today) > 0 ? dayAfter : today
+}
+
+/**
+ * Cover starting on the 8th for N months expires on the 7th N months later
+ * (start + N months − 1 day). 12 months matches the annual rule:
+ * 2025-08-08 → 2026-08-07
+ */
+export function expiryFromCoverMonths(startDate, coverMonths = 12) {
+  const parsed = parseIsoParts(startDate)
+  if (!parsed) return ''
+
+  const months = clampCoverMonths(coverMonths)
+  const date = new Date(parsed.year, parsed.month - 1 + months, parsed.day)
   date.setDate(date.getDate() - 1)
 
   return toIsoDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
+}
+
+/**
+ * Annual policy expiry / renewal date.
+ * Cover starting on the 8th renews on the 7th next year (start + 1 year − 1 day).
+ */
+export function defaultExpiryDate(startDate) {
+  return expiryFromCoverMonths(startDate, 12)
 }
 
 /** Formats an ISO date (yyyy-MM-dd) as dd/mm/yy. */

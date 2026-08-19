@@ -91,56 +91,34 @@ export function useReminders() {
           })
         }
 
-        for (const schedule of getVehicleSchedules(vehicle)) {
-          const outstanding = getOutstandingBalance(schedule)
+        const schedule = getVehicleSchedules(vehicle)[0]
+        if (!schedule) continue
 
-          for (const inst of schedule.installments ?? []) {
-            if (inst.paid || !inst.due_date) continue
+        const outstanding = getOutstandingBalance(schedule)
 
-            const remaining = getInstallmentRemaining(inst)
-            if (remaining <= 0.01) continue
+        for (const inst of schedule.installments ?? []) {
+          if (inst.paid || !inst.due_date) continue
 
-            const due = parseISO(inst.due_date)
-            if (Number.isNaN(due.getTime())) continue
+          const remaining = getInstallmentRemaining(inst)
+          if (remaining <= 0.01) continue
 
-            const todayKey = format(today, 'yyyy-MM-dd')
+          const due = parseISO(inst.due_date)
+          if (Number.isNaN(due.getTime())) continue
 
-            for (const offset of PAYMENT_REMINDER_OFFSETS) {
-              const reminderDate = format(subDays(due, offset.daysBefore), 'yyyy-MM-dd')
-              if (reminderDate < todayKey || !inRange(reminderDate)) continue
+          const todayKey = format(today, 'yyyy-MM-dd')
 
-              events.push({
-                id: `payment-reminder-${vehicle.id}-${inst.number ?? inst.due_date}-${offset.daysBefore}`,
-                type: 'payment',
-                date: reminderDate,
-                title: `${offset.title} · ${vehicle.registration}`,
-                subtitle: `${client.name} · due ${format(due, 'dd MMM yyyy')}`,
-                status: offset.daysBefore <= 1 ? 'urgent' : 'upcoming',
-                trigger: offset.trigger,
-                client,
-                vehicle,
-                installment: inst,
-                remaining,
-                outstanding,
-              })
-            }
+          for (const offset of PAYMENT_REMINDER_OFFSETS) {
+            const reminderDate = format(subDays(due, offset.daysBefore), 'yyyy-MM-dd')
+            if (reminderDate < todayKey || !inRange(reminderDate)) continue
 
-            if (!inRange(inst.due_date)) continue
-
-            const daysLeft = differenceInDays(due, today)
             events.push({
-              id: `payment-${vehicle.id}-${inst.due_date}-${inst.number ?? ''}`,
+              id: `payment-reminder-${vehicle.id}-${inst.number ?? inst.due_date}-${offset.daysBefore}`,
               type: 'payment',
-              date: inst.due_date,
-              title: `Instalment due · ${vehicle.registration}`,
-              subtitle: `${client.name}`,
-              status: daysLeft < 0 ? 'overdue' : daysLeft <= 1 ? 'urgent' : 'upcoming',
-              trigger:
-                daysLeft < 0
-                  ? 'payment_overdue_1d'
-                  : daysLeft === 0
-                    ? 'payment_due_today'
-                    : undefined,
+              date: reminderDate,
+              title: `${offset.title} · ${vehicle.registration}`,
+              subtitle: `${client.name} · due ${format(due, 'dd MMM yyyy')}`,
+              status: offset.daysBefore <= 1 ? 'urgent' : 'upcoming',
+              trigger: offset.trigger,
               client,
               vehicle,
               installment: inst,
@@ -148,6 +126,29 @@ export function useReminders() {
               outstanding,
             })
           }
+
+          if (!inRange(inst.due_date)) continue
+
+          const daysLeft = differenceInDays(due, today)
+          events.push({
+            id: `payment-${vehicle.id}-${inst.due_date}-${inst.number ?? ''}`,
+            type: 'payment',
+            date: inst.due_date,
+            title: `Instalment due · ${vehicle.registration}`,
+            subtitle: `${client.name}`,
+            status: daysLeft < 0 ? 'overdue' : daysLeft <= 1 ? 'urgent' : 'upcoming',
+            trigger:
+              daysLeft < 0
+                ? 'payment_overdue_1d'
+                : daysLeft === 0
+                  ? 'payment_due_today'
+                  : undefined,
+            client,
+            vehicle,
+            installment: inst,
+            remaining,
+            outstanding,
+          })
         }
       }
     }

@@ -673,6 +673,7 @@ export default function AddClientPage() {
           policy_type: form.policy_type,
           start_date: form.start_date,
           expiry_date: form.expiry_date,
+          cover_months: 12,
           sum_insured: parseNumberInput(form.vehicle_value),
           premium: parseNumberInput(form.premium),
           vehicle_notes: form.vehicle_notes,

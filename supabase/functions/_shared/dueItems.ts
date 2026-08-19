@@ -54,7 +54,18 @@ export function collectDueItems({
     }
   }
 
+  const currentByVehicle = new Map()
   for (const schedule of schedules) {
+    const existing = currentByVehicle.get(schedule.vehicle_id)
+    if (
+      !existing ||
+      String(schedule.created_at || '') > String(existing.created_at || '')
+    ) {
+      currentByVehicle.set(schedule.vehicle_id, schedule)
+    }
+  }
+
+  for (const schedule of currentByVehicle.values()) {
     const vehicle = vehicleById.get(schedule.vehicle_id)
     if (!vehicle) continue
     const client = clientsById.get(vehicle.client_id)

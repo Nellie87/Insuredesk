@@ -10,11 +10,19 @@ import {
   getInstallmentPaidAmount,
   getNextDueInstallment,
   getVehicleCollectionSummary,
+  maxInstallmentsForCover,
   presetInstallmentRates,
   rateFromAmount,
 } from '../utils/calculator'
 import { formatNumberInput, parseNumberInput, premiumFromRate } from '../utils/numberInput'
-import { defaultExpiryDate, formatDisplayDate } from '../utils/policyDates'
+import {
+  coverMonthsLabel,
+  expiryFromCoverMonths,
+  formatDisplayDate,
+  getCoverMonths,
+  isCoverExpired,
+  isCoverExpiringSoon,
+} from '../utils/policyDates'
 import { toast } from '../store/toastStore'
 import { INSURER_OPTIONS } from '../constants/insurers'
 import { CAR_MAKE_OPTIONS, getCarModelOptions } from '../constants/carMakes'
@@ -28,6 +36,7 @@ import StatusBadge from '../components/ui/StatusBadge'
 import LottieLoader from '../components/ui/LottieLoader'
 import DateInput from '../components/ui/DateInput'
 import PageShell from '../components/layout/PageShell'
+import RenewCoverPanel from '../components/modules/RenewCoverPanel'
 
 const POLICY_LABELS = {
   comprehensive: 'Comprehensive',
@@ -512,7 +521,18 @@ function TopPolicyOverviewCard({ vehicles, onUpdateVehicle }) {
           <DetailItem label="Vehicle Value" value={formatKSh(activeVehicle.vehicle_value ?? 0)} />
           <DetailItem label="Sum Insured" value={formatKSh(activeVehicle.vehicle_value ?? activeVehicle.sum_insured ?? 0)} />
           <DetailItem label="Start Date" value={formatDate(activeVehicle.start_date)} />
-          <DetailItem label="Renewal Date" value={formatDate(activeVehicle.expiry_date)} />
+          <DetailItem
+            label="Renewal Date"
+            value={
+              isCoverExpired(activeVehicle.expiry_date)
+                ? `${formatDate(activeVehicle.expiry_date)} · Expired`
+                : formatDate(activeVehicle.expiry_date)
+            }
+          />
+          <DetailItem
+            label="Cover length"
+            value={coverMonthsLabel(getCoverMonths(activeVehicle))}
+          />
           <DetailItem label="Usage" value={USE_LABELS[activeVehicle.use_type] ?? activeVehicle.use_type} />
         </dl>
       </div>
@@ -535,6 +555,7 @@ function VehicleCard({
   onUpdateVehicle,
   onUpdateSchedule,
   onCreateSchedule,
+  onRenewVehicle,
 }) {
   const schedules = getVehicleSchedules(vehicle)
   const schedule = schedules[0] ?? null
@@ -549,11 +570,16 @@ function VehicleCard({
   const installments = schedule?.installments ?? []
   const fullyPaid = collection.fullyPaid
   const hasOverpayment = overpayment > 0.01
+  const coverMonths = getCoverMonths(vehicle)
+  const expired = isCoverExpired(vehicle.expiry_date)
+  const expiringSoon = isCoverExpiringSoon(vehicle.expiry_date)
+  const coverHistory = Array.isArray(vehicle.cover_history) ? vehicle.cover_history : []
 
   const [editingVehicle, setEditingVehicle] = useState(false)
   const [editingCover, setEditingCover] = useState(false)
   const [editingDates, setEditingDates] = useState(false)
   const [editingPlan, setEditingPlan] = useState(false)
+  const [renewing, setRenewing] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [vehicleForm, setVehicleForm] = useState({})
@@ -612,8 +638,9 @@ function VehicleCard({
         ? installments
         : buildInstallmentSchedule({
             premium: premiumValue,
-            installmentCount: 3,
+            installmentCount: Math.min(3, maxInstallmentsForCover(coverMonths)),
             startDate: vehicle.start_date,
+            coverMonths,
           })?.installments ?? []
       ).map(item => ({
         number: item.number,
@@ -657,7 +684,11 @@ function VehicleCard({
       installmentCount: count,
       startDate,
       rates: resolvedRates,
-      maxInstallments: allowFive ? 5 : 3,
+      maxInstallments: Math.min(
+        allowFive ? 5 : 3,
+        maxInstallmentsForCover(coverMonths),
+      ),
+      coverMonths,
       overrides: keepPaid
         ? existingInstallments.map(item => ({
             paid: item.paid,
@@ -934,26 +965,38 @@ function VehicleCard({
           </div>
         </div>
 
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-            hasOverpayment
-              ? 'bg-sky-50 text-sky-700 border border-sky-200'
-              : fullyPaid
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border border-amber-200'
-          }`}
-        >
+        <div className="flex flex-wrap items-center gap-2">
+          {expired && (
+            <span className="inline-flex items-center rounded-full border border-danger-200 bg-danger-50 px-3 py-1 text-xs font-semibold text-danger-700">
+              Cover expired
+            </span>
+          )}
+          {!expired && expiringSoon && (
+            <span className="inline-flex items-center rounded-full border border-warning-200 bg-warning-50 px-3 py-1 text-xs font-semibold text-warning-700">
+              Expiring soon
+            </span>
+          )}
           <span
-            className={`h-1.5 w-1.5 rounded-full ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
               hasOverpayment
-                ? 'bg-sky-500'
+                ? 'bg-sky-50 text-sky-700 border border-sky-200'
                 : fullyPaid
-                  ? 'bg-emerald-500'
-                  : 'bg-amber-500'
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200'
             }`}
-          />
-          {hasOverpayment ? 'Overpaid' : fullyPaid ? 'Fully Paid' : 'Balance Due'}
-        </span>
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                hasOverpayment
+                  ? 'bg-sky-500'
+                  : fullyPaid
+                    ? 'bg-emerald-500'
+                    : 'bg-amber-500'
+              }`}
+            />
+            {hasOverpayment ? 'Overpaid' : fullyPaid ? 'Fully Paid' : 'Balance Due'}
+          </span>
+        </div>
       </div>
 
       <div className="p-5 space-y-6">
@@ -966,6 +1009,60 @@ function VehicleCard({
           fullyPaid={fullyPaid}
           nextDue={nextDue}
         />
+
+        {renewing ? (
+          <RenewCoverPanel
+            vehicle={vehicle}
+            saving={saving}
+            onCancel={() => setRenewing(false)}
+            onSave={async payload => {
+              if (!onRenewVehicle) return
+              setSaving(true)
+              try {
+                await onRenewVehicle(payload)
+                setRenewing(false)
+                toast(
+                  `Cover renewed for ${coverMonthsLabel(payload.cover_months)} · expires ${formatDate(payload.expiry_date)}.`,
+                )
+              } finally {
+                setSaving(false)
+              }
+            }}
+          />
+        ) : (
+          <div
+            className={`flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
+              expired
+                ? 'border-danger-200 bg-danger-50/70'
+                : expiringSoon
+                  ? 'border-warning-200 bg-warning-50/70'
+                  : 'border-slate-200 bg-slate-50/70'
+            }`}
+          >
+            <p className="text-sm text-slate-700">
+              {expired
+                ? `This ${coverMonthsLabel(coverMonths)} cover ended ${formatDate(vehicle.expiry_date)}. Renew for 1 month, 2 months, or a full year.`
+                : expiringSoon
+                  ? `Cover ends ${formatDate(vehicle.expiry_date)}. Renew now with a short period or another full year.`
+                  : `Current cover is ${coverMonthsLabel(coverMonths)} · renews ${formatDate(vehicle.expiry_date)}.`}
+            </p>
+            {onRenewVehicle && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingVehicle(false)
+                  setEditingCover(false)
+                  setEditingDates(false)
+                  setEditingPlan(false)
+                  setRenewing(true)
+                }}
+                className={BTN_PRIMARY}
+              >
+                Renew cover
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Section Editors */}
         <section className="space-y-4">
@@ -1224,7 +1321,9 @@ function VehicleCard({
                       setDatesForm(prev => ({
                         ...prev,
                         start_date,
-                        expiry_date: start_date ? defaultExpiryDate(start_date) : prev.expiry_date,
+                        expiry_date: start_date
+                          ? expiryFromCoverMonths(start_date, coverMonths)
+                          : prev.expiry_date,
                       }))
                     }}
                   />
@@ -1268,7 +1367,9 @@ function VehicleCard({
                 </Field>
                 <Field label="Number of Installments">
                   <div className="flex gap-2">
-                    {(planForm.allow_five ? [1, 2, 3, 4, 5] : [1, 2, 3]).map(count => (
+                    {(planForm.allow_five ? [1, 2, 3, 4, 5] : [1, 2, 3])
+                      .filter(count => count <= maxInstallmentsForCover(coverMonths))
+                      .map(count => (
                       <button
                         key={count}
                         type="button"
@@ -1303,6 +1404,7 @@ function VehicleCard({
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-b border-slate-200/60 py-3">
+                {maxInstallmentsForCover(coverMonths) > 3 && (
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1333,6 +1435,7 @@ function VehicleCard({
                   />
                   Enable up to 5 installments
                 </label>
+                )}
 
                 <button
                   type="button"
@@ -1513,6 +1616,35 @@ function VehicleCard({
             </div>
           )}
         </section>
+
+        {/* Notes Section */}
+        {coverHistory.length > 0 && (
+          <section className="border-t border-slate-100 pt-5 space-y-3">
+            <Subheading>Previous cover</Subheading>
+            <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+              {coverHistory.map((period, index) => (
+                <div
+                  key={`${period.schedule_id || period.archived_at || index}`}
+                  className="flex flex-wrap items-center justify-between gap-2 bg-white px-4 py-3 text-sm"
+                >
+                  <div>
+                    <p className="font-semibold text-slate-800">
+                      {formatDate(period.start_date)} – {formatDate(period.expiry_date)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {coverMonthsLabel(period.cover_months || 12)}
+                      {period.insurer ? ` · ${period.insurer}` : ''}
+                      {period.policy_number ? ` · #${period.policy_number}` : ''}
+                    </p>
+                  </div>
+                  <p className="font-semibold text-slate-900">
+                    {formatKSh(period.premium || 0)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Notes Section */}
         <section className="border-t border-slate-100 pt-5 space-y-3">
@@ -1728,6 +1860,7 @@ export default function ClientDetailPage() {
     updateVehicle,
     updatePaymentSchedule,
     createPaymentSchedule,
+    renewVehicle,
     refetch,
   } = useClients()
   const {
@@ -2139,6 +2272,7 @@ export default function ClientDetailPage() {
                       return updatePaymentSchedule(schedule.id, updates)
                     }}
                     onCreateSchedule={payload => createPaymentSchedule(vehicle.id, payload)}
+                    onRenewVehicle={payload => renewVehicle(vehicle.id, payload)}
                   />
                 ))}
               </div>

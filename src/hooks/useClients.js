@@ -7,6 +7,29 @@ import {
   getVehicleSchedules,
   reconcileScheduleWithPayments,
 } from '../utils/calculator'
+import { isCoverExpired, todayIso } from '../utils/policyDates'
+
+function asCoverHistory(value) {
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+function vehicleCloudPayload(updates) {
+  const {
+    payment_schedules: _schedules,
+    payment_schedule: _schedule,
+    ...payload
+  } = updates
+  return payload
+}
 
 function schedulesEqual(a, b) {
   return (
@@ -64,8 +87,13 @@ export function useClients() {
       const vehicles = []
 
       for (const vehicle of client.vehicles ?? []) {
-        const schedules = getVehicleSchedules(vehicle).map(schedule => {
-          const reconciled = reconcileScheduleWithPayments(schedule, payments)
+        const existingSchedules = getVehicleSchedules(vehicle)
+        const schedules = existingSchedules.map(schedule => {
+          const reconciled = reconcileScheduleWithPayments(
+            schedule,
+            payments,
+            existingSchedules,
+          )
           if (!schedulesEqual(schedule, reconciled)) {
             clientChanged = true
             void persistScheduleUpdate(reconciled)
@@ -82,14 +110,27 @@ export function useClients() {
       }
 
       let status = client.status
-      const allSchedules = vehicles.flatMap(getVehicleSchedules)
-      if (allSchedules.length > 0) {
-        const fullyPaid = allSchedules.every(schedule => getOutstandingBalance(schedule) <= 0.01)
-        if (fullyPaid && status !== 'fully_paid' && status !== 'lapsed') {
+      const today = todayIso()
+      const allExpired =
+        vehicles.length > 0 &&
+        vehicles.every(vehicle => isCoverExpired(vehicle.expiry_date, today))
+      const currentSchedules = vehicles
+        .map(vehicle => getVehicleSchedules(vehicle)[0])
+        .filter(Boolean)
+
+      if (allExpired && status !== 'lapsed') {
+        status = 'lapsed'
+        clientChanged = true
+        statusUpdates.push({ id: client.id, status })
+      } else if (!allExpired && currentSchedules.length > 0) {
+        const fullyPaid = currentSchedules.every(
+          schedule => getOutstandingBalance(schedule) <= 0.01,
+        )
+        if (fullyPaid && status !== 'fully_paid') {
           status = 'fully_paid'
           clientChanged = true
           statusUpdates.push({ id: client.id, status })
-        } else if (!fullyPaid && status === 'fully_paid') {
+        } else if (!fullyPaid && (status === 'fully_paid' || status === 'lapsed')) {
           status = 'active'
           clientChanged = true
           statusUpdates.push({ id: client.id, status })
@@ -259,6 +300,8 @@ export function useClients() {
       policy_type: vehicle.policy_type,
       start_date: vehicle.start_date,
       expiry_date: vehicle.expiry_date,
+      cover_months: Number(vehicle.cover_months) || 12,
+      cover_history: asCoverHistory(vehicle.cover_history),
       sum_insured: Number(vehicle.sum_insured || 0),
       premium: Number(vehicle.premium),
       vehicle_notes: vehicle.vehicle_notes?.trim() || null,
@@ -372,10 +415,25 @@ export function useClients() {
     await localPut('vehicles', vehicleRecord)
     if (parentClient) await localPut('clients', parentClient)
 
-    const payload = { id: vehicleId, ...updates }
+    const payload = { id: vehicleId, ...vehicleCloudPayload(updates) }
     if (isOnline) {
-      const { error: err } = await supabase.from('vehicles').update(updates).eq('id', vehicleId)
-      if (err) await addToSyncQueue({ table: 'vehicles', operation: 'update', payload })
+      const cloudPayload = vehicleCloudPayload(updates)
+      const { error: err } = await supabase
+        .from('vehicles')
+        .update(cloudPayload)
+        .eq('id', vehicleId)
+      if (err) {
+        const fallback = { ...cloudPayload }
+        delete fallback.cover_history
+        delete fallback.cover_months
+        const { error: retryErr } = await supabase
+          .from('vehicles')
+          .update(fallback)
+          .eq('id', vehicleId)
+        if (retryErr) {
+          await addToSyncQueue({ table: 'vehicles', operation: 'update', payload })
+        }
+      }
     } else {
       await addToSyncQueue({ table: 'vehicles', operation: 'update', payload })
     }
@@ -445,9 +503,13 @@ export function useClients() {
         if (index < 0) return client
 
         const nextVehicles = vehicles.slice()
+        const existing = getVehicleSchedules(vehicles[index])
         nextVehicles[index] = {
           ...vehicles[index],
-          payment_schedules: [newSchedule],
+          payment_schedules: [
+            newSchedule,
+            ...existing.filter(schedule => schedule.id !== newSchedule.id),
+          ],
         }
         parentClient = { ...client, vehicles: nextVehicles }
         return parentClient
@@ -460,6 +522,149 @@ export function useClients() {
 
     return newSchedule
   }, [agentId, persistRecord])
+
+  const renewVehicle = useCallback(async (vehicleId, renewal) => {
+    const now = new Date().toISOString()
+    const coverMonths = Number(renewal.cover_months) || 12
+    const premium = Number(renewal.premium)
+    if (!renewal.start_date || !renewal.expiry_date || !premium) {
+      throw new Error('Start date, expiry date, and premium are required.')
+    }
+
+    const newSchedule = renewal.schedule?.installments?.length
+      ? {
+          id: crypto.randomUUID(),
+          vehicle_id: vehicleId,
+          agent_id: agentId,
+          total_premium: Number(renewal.schedule.total_premium ?? premium),
+          down_payment: Number(renewal.schedule.down_payment || 0),
+          down_payment_paid: Boolean(renewal.schedule.down_payment_paid),
+          down_payment_paid_at: renewal.schedule.down_payment_paid_at || null,
+          installment_count: renewal.schedule.installments.length,
+          installments: renewal.schedule.installments,
+          created_at: now,
+        }
+      : null
+
+    let nextVehicle = null
+    let parentClient = null
+
+    setClients(prev =>
+      prev.map(client => {
+        const vehicles = client.vehicles ?? []
+        const index = vehicles.findIndex(item => item.id === vehicleId)
+        if (index < 0) return client
+
+        const current = vehicles[index]
+        const archived = {
+          start_date: current.start_date,
+          expiry_date: current.expiry_date,
+          cover_months: Number(current.cover_months) || 12,
+          premium: Number(current.premium) || 0,
+          insurer: current.insurer || null,
+          policy_number: current.policy_number || null,
+          policy_type: current.policy_type,
+          schedule_id: getVehicleSchedules(current)[0]?.id ?? null,
+          archived_at: now,
+        }
+
+        nextVehicle = {
+          ...current,
+          start_date: renewal.start_date,
+          expiry_date: renewal.expiry_date,
+          cover_months: coverMonths,
+          premium,
+          insurer: renewal.insurer?.trim() || current.insurer,
+          policy_number: renewal.policy_number?.trim() || null,
+          policy_type: renewal.policy_type || current.policy_type,
+          cover_history: [archived, ...asCoverHistory(current.cover_history)],
+          payment_schedules: newSchedule
+            ? [newSchedule, ...getVehicleSchedules(current)]
+            : getVehicleSchedules(current),
+        }
+
+        const nextVehicles = vehicles.slice()
+        nextVehicles[index] = nextVehicle
+        parentClient = {
+          ...client,
+          status: 'active',
+          updated_at: now,
+          vehicles: nextVehicles,
+        }
+        return parentClient
+      })
+    )
+
+    if (!nextVehicle || !parentClient) {
+      throw new Error('Vehicle not found')
+    }
+
+    const { payment_schedules: _schedules, ...vehicleRecord } = nextVehicle
+    await localPut('vehicles', vehicleRecord)
+    if (newSchedule) await localPut('payment_schedules', newSchedule)
+    await localPut('clients', parentClient)
+
+    const vehicleUpdates = {
+      start_date: nextVehicle.start_date,
+      expiry_date: nextVehicle.expiry_date,
+      cover_months: nextVehicle.cover_months,
+      premium: nextVehicle.premium,
+      insurer: nextVehicle.insurer,
+      policy_number: nextVehicle.policy_number,
+      policy_type: nextVehicle.policy_type,
+      cover_history: nextVehicle.cover_history,
+    }
+
+    if (isOnline) {
+      const { error: err } = await supabase
+        .from('vehicles')
+        .update(vehicleUpdates)
+        .eq('id', vehicleId)
+      if (err) {
+        const fallback = { ...vehicleUpdates }
+        delete fallback.cover_history
+        delete fallback.cover_months
+        const { error: retryErr } = await supabase
+          .from('vehicles')
+          .update(fallback)
+          .eq('id', vehicleId)
+        if (retryErr) {
+          await addToSyncQueue({
+            table: 'vehicles',
+            operation: 'update',
+            payload: { id: vehicleId, ...vehicleUpdates },
+          })
+        }
+      }
+
+      const { error: clientErr } = await supabase
+        .from('clients')
+        .update({ status: 'active', updated_at: now })
+        .eq('id', parentClient.id)
+      if (clientErr) {
+        await addToSyncQueue({
+          table: 'clients',
+          operation: 'update',
+          payload: { id: parentClient.id, status: 'active', updated_at: now },
+        })
+      }
+    } else {
+      await addToSyncQueue({
+        table: 'vehicles',
+        operation: 'update',
+        payload: { id: vehicleId, ...vehicleUpdates },
+      })
+      await addToSyncQueue({
+        table: 'clients',
+        operation: 'update',
+        payload: { id: parentClient.id, status: 'active', updated_at: now },
+      })
+    }
+
+    if (newSchedule) await persistRecord('payment_schedules', newSchedule)
+
+    return nextVehicle
+  }, [agentId, isOnline, persistRecord])
 
   const importClientsBatch = useCallback(async rows => {
     const imported = []
@@ -492,5 +697,6 @@ export function useClients() {
     updateVehicle,
     updatePaymentSchedule,
     createPaymentSchedule,
+    renewVehicle,
   }
 }

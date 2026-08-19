@@ -290,6 +290,7 @@ function parseRow(row, headerMap, rowNumber) {
         policy_type: policyType || 'comprehensive',
         start_date: inferredStartDate,
         expiry_date: expiryDate,
+        cover_months: 12,
         sum_insured: get('sum_insured') ?? '',
         premium,
       },

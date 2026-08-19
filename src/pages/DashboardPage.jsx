@@ -130,12 +130,13 @@ export default function DashboardPage() {
             premium * (getCommissionRate(agent, vehicle) / 100)
         }
 
-        for (const schedule of getVehicleSchedules(vehicle)) {
-          if (hasOverduePayment(schedule)) {
+        const current = getVehicleSchedules(vehicle)[0]
+        if (current) {
+          if (hasOverduePayment(current)) {
             overdueCount++
-            const amount = totalOverdueOnSchedule(schedule, today)
+            const amount = totalOverdueOnSchedule(current, today)
             overdueAmount += amount
-            const next = getNextDueInstallment(schedule)
+            const next = getNextDueInstallment(current)
             const nextDue = parseDate(next?.due_date)
             overdueClients.push({
               client,
@@ -148,7 +149,7 @@ export default function DashboardPage() {
             })
           }
 
-          for (const installment of schedule.installments ?? []) {
+          for (const installment of current.installments ?? []) {
             if (installment.paid) continue
             const due = parseDate(installment.due_date)
             if (!due || due < today || due > in7Days) continue
@@ -162,12 +163,14 @@ export default function DashboardPage() {
         }
 
         const expiry = parseDate(vehicle.expiry_date)
-        if (!expiry || expiry < today || expiry > in30Days) continue
+        if (!expiry || expiry > in30Days) continue
+        const daysLeft = differenceInDays(expiry, today)
+        if (daysLeft < -180) continue
         expiringCount++
         expiringVehicles.push({
           client,
           vehicle,
-          daysLeft: differenceInDays(expiry, today),
+          daysLeft,
         })
       }
     }
@@ -189,7 +192,13 @@ export default function DashboardPage() {
         .sort((a, b) => b.daysOverdue - a.daysOverdue)
         .slice(0, 8),
       expiringVehicles: expiringVehicles
-        .sort((a, b) => a.daysLeft - b.daysLeft)
+        .sort((a, b) => {
+          const aExpired = a.daysLeft < 0
+          const bExpired = b.daysLeft < 0
+          if (aExpired && bExpired) return b.daysLeft - a.daysLeft
+          if (aExpired !== bExpired) return aExpired ? -1 : 1
+          return a.daysLeft - b.daysLeft
+        })
         .slice(0, 8),
       dueSoon: dueSoon
         .sort((a, b) => a.daysLeft - b.daysLeft)
@@ -214,7 +223,7 @@ export default function DashboardPage() {
     },
     {
       id: 'expiring',
-      label: 'Expiring',
+      label: 'Renewals',
       count: stats.expiringCount,
       tone: 'warning',
     },
@@ -250,12 +259,12 @@ export default function DashboardPage() {
     },
     expiring: {
       title: stats.expiringCount
-        ? `${stats.expiringCount} ${stats.expiringCount === 1 ? 'policy' : 'policies'} expiring`
+        ? `${stats.expiringCount} ${stats.expiringCount === 1 ? 'policy' : 'policies'} to renew`
         : 'No upcoming renewals',
-      detail: 'Cover ending in the next 30 days',
+      detail: 'Expired cover and policies ending in the next 30 days',
       actionTo: '/reminders',
       actionLabel: 'Calendar',
-      empty: 'No policies expiring in the next 30 days.',
+      empty: 'No expired or expiring policies in the next 30 days.',
       rail: 'bg-warning-500',
     },
     due: {
@@ -509,12 +518,15 @@ function ExpiringItems({ items, rail }) {
               .filter(Boolean)
               .join(' · ')}
             value={
-              daysLeft === 0
-                ? 'Today'
-                : daysLeft === 1
-                  ? 'Tomorrow'
-                  : `${daysLeft} days`
+              daysLeft < 0
+                ? `${Math.abs(daysLeft)}d expired`
+                : daysLeft === 0
+                  ? 'Today'
+                  : daysLeft === 1
+                    ? 'Tomorrow'
+                    : `${daysLeft} days`
             }
+            valueClass={daysLeft < 0 ? 'text-danger-700' : undefined}
           />
         )
       })}

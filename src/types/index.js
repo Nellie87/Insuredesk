@@ -41,6 +41,18 @@ export interface Client {
 export type PolicyType = 'comprehensive' | 'third_party' | 'third_party_fire_theft'
 export type VehicleUse   = 'private' | 'commercial' | 'psv'
 
+export interface CoverPeriod {
+  start_date: string
+  expiry_date: string
+  cover_months: number
+  premium: number
+  insurer?: string | null
+  policy_number?: string | null
+  policy_type?: PolicyType | string
+  schedule_id?: string | null
+  archived_at: string
+}
+
 export interface Vehicle {
   id: string
   client_id: string
@@ -58,6 +70,10 @@ export interface Vehicle {
   policy_type: PolicyType
   start_date: string   // ISO date string
   expiry_date: string  // ISO date string
+  /** Length of the current cover period in months (1–12). */
+  cover_months?: number
+  /** Archived cover periods after renewal. */
+  cover_history?: CoverPeriod[]
   sum_insured: number
   premium: number
   vehicle_notes?: string | null
