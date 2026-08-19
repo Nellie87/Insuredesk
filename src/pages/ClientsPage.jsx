@@ -1,6 +1,12 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { formatDistanceToNow, parseISO } from 'date-fns'
 import { useClients } from '../hooks/useClients'
+import { useClientSessions } from '../hooks/useClientSessions'
+import {
+  clientSessionLabel,
+  clientSessionStepLabel,
+} from '../lib/clientSessions'
 import {
   formatKSh,
   getVehicleSchedules,
@@ -33,6 +39,7 @@ const FILTER_LABELS = {
 
 export default function ClientsPage() {
   const { clients, loading } = useClients()
+  const { sessions, discardSession } = useClientSessions()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
 
@@ -99,6 +106,66 @@ export default function ClientsPage() {
           </button>
         ))}
       </div>
+
+      {sessions.length > 0 && (
+        <section className="space-y-2.5">
+          <h2 className="text-sm font-semibold text-slate-700">
+            Saved sessions
+          </h2>
+          <div className="space-y-2">
+            {sessions.map(item => {
+              let savedLabel = 'Saved'
+              try {
+                savedLabel = `Saved ${formatDistanceToNow(parseISO(item.updated_at), {
+                  addSuffix: true,
+                })}`
+              } catch {
+                savedLabel = 'Saved'
+              }
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-primary-100 bg-primary-50/60 p-4"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900">
+                      {clientSessionLabel(item)}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {clientSessionStepLabel(item)} · {savedLabel}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (
+                          !window.confirm(
+                            'Discard this saved session? Entered details will be lost.',
+                          )
+                        ) {
+                          return
+                        }
+                        await discardSession(item.id)
+                      }}
+                      className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-700"
+                    >
+                      Discard
+                    </button>
+                    <Link
+                      to={`/clients/add?session=${item.id}`}
+                      className="rounded-xl bg-primary-600 px-3.5 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700"
+                    >
+                      Resume
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {loading ? (
         <LottieLoader label="Loading clients..." />

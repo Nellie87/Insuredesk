@@ -1,6 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useClients } from '../hooks/useClients'
+import { useAppStore } from '../store/appStore'
+import {
+  deleteClientSession,
+  getClientSession,
+  isClientFormStarted,
+  saveClientSession,
+} from '../lib/clientSessions'
+import LottieLoader from '../components/ui/LottieLoader'
 import {
   amountsFromRates,
   buildInstallmentSchedule,
@@ -178,11 +186,20 @@ function ReviewSection({ title, children, className = '' }) {
 
 export default function AddClientPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { addClientWithVehicle } = useClients()
+  const agentId = useAppStore(s => s.session?.user?.id)
+
+  const sessionParam = searchParams.get('session')
+  const sessionIdRef = useRef(sessionParam || crypto.randomUUID())
+  const hydratedIdRef = useRef(null)
 
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(INITIAL_FORM)
   const [saving, setSaving] = useState(false)
+  const [savingSession, setSavingSession] = useState(false)
+  const [sessionSavedAt, setSessionSavedAt] = useState(null)
+  const [ready, setReady] = useState(!sessionParam)
   const [error, setError] = useState(null)
   const [datesTouched, setDatesTouched] = useState(false)
 
@@ -209,6 +226,93 @@ export default function AddClientPage() {
 
     if (key === 'start_date') setDatesTouched(false)
   }
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function hydrate() {
+      if (!sessionParam) {
+        setReady(true)
+        return
+      }
+
+      if (hydratedIdRef.current === sessionParam) {
+        setReady(true)
+        return
+      }
+
+      const existing = await getClientSession(sessionParam)
+      if (cancelled) return
+
+      if (existing?.form) {
+        sessionIdRef.current = existing.id
+        setForm({
+          ...INITIAL_FORM,
+          ...existing.form,
+          installment_overrides: Array.isArray(existing.form.installment_overrides)
+            ? existing.form.installment_overrides
+            : [],
+        })
+        setStep(
+          Number.isInteger(existing.step)
+            ? Math.min(Math.max(existing.step, 0), STEPS.length - 1)
+            : 0,
+        )
+        setSessionSavedAt(existing.updated_at ?? null)
+      } else {
+        sessionIdRef.current = sessionParam
+      }
+
+      hydratedIdRef.current = sessionParam
+      setReady(true)
+    }
+
+    hydrate()
+    return () => {
+      cancelled = true
+    }
+  }, [sessionParam])
+
+  useEffect(() => {
+    if (!ready || !agentId) return
+    if (!isClientFormStarted(form)) return
+
+    const persist = async () => {
+      try {
+        const record = await saveClientSession({
+          id: sessionIdRef.current,
+          agent_id: agentId,
+          step,
+          form,
+        })
+        sessionIdRef.current = record.id
+        setSessionSavedAt(record.updated_at)
+        setSearchParams(
+          prev => {
+            if (prev.get('session') === record.id) return prev
+            return { session: record.id }
+          },
+          { replace: true },
+        )
+      } catch (err) {
+        console.warn('[Client session] autosave failed:', err.message)
+      }
+    }
+
+    const timeoutId = window.setTimeout(persist, 450)
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') persist()
+    }
+
+    window.addEventListener('pagehide', persist)
+    document.addEventListener('visibilitychange', onHide)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.removeEventListener('pagehide', persist)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [agentId, form, ready, setSearchParams, step])
 
   const setVehicleValue = value => {
     const formatted = formatNumberInput(value)
@@ -475,6 +579,44 @@ export default function AddClientPage() {
     setStep(prev => Math.max(prev - 1, 0))
   }
 
+  const persistSession = async () => {
+    if (!agentId) throw new Error('Not signed in.')
+    const record = await saveClientSession({
+      id: sessionIdRef.current,
+      agent_id: agentId,
+      step,
+      form,
+    })
+    sessionIdRef.current = record.id
+    setSessionSavedAt(record.updated_at)
+    setSearchParams({ session: record.id }, { replace: true })
+    return record
+  }
+
+  const handleSaveSession = async () => {
+    if (!isClientFormStarted(form)) {
+      const message = 'Enter some client details before saving a session.'
+      setError(message)
+      toast(message, 'error')
+      return
+    }
+
+    setSavingSession(true)
+    setError(null)
+
+    try {
+      await persistSession()
+      toast('Session saved. Continue it later from Clients.')
+      navigate('/clients')
+    } catch (err) {
+      const failMessage = err.message || 'Could not save session. Try again.'
+      setError(failMessage)
+      toast(failMessage, 'error')
+    } finally {
+      setSavingSession(false)
+    }
+  }
+
   const handleSubmit = async () => {
     const message =
       validateStep(0) ||
@@ -540,6 +682,11 @@ export default function AddClientPage() {
         schedule,
       })
 
+      try {
+        await deleteClientSession(sessionIdRef.current)
+      } catch (err) {
+        console.warn('[Client session] could not clear draft:', err.message)
+      }
       toast('Client saved successfully.')
       navigate('/clients', { replace: true })
     } catch (err) {
@@ -555,6 +702,14 @@ export default function AddClientPage() {
     POLICY_TYPES.find(type => type.value === form.policy_type)?.label ??
     form.policy_type
 
+  if (!ready) {
+    return (
+      <div className="flex min-h-full flex-col bg-white lg:min-h-[calc(100vh-4rem)]">
+        <LottieLoader label="Loading session..." />
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-full flex-col bg-white lg:min-h-[calc(100vh-4rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 lg:px-8">
@@ -564,9 +719,24 @@ export default function AddClientPage() {
         >
           ← Back to clients
         </Link>
-        <p className="text-sm font-medium text-slate-400">
-          Step {step + 1} of {STEPS.length}
-        </p>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+          {sessionSavedAt && (
+            <p className="hidden text-sm font-medium text-emerald-700 sm:block">
+              Session saved
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={handleSaveSession}
+            disabled={saving || savingSession}
+            className={BTN_SECONDARY}
+          >
+            {savingSession ? 'Saving…' : 'Save session'}
+          </button>
+          <p className="text-sm font-medium text-slate-400">
+            Step {step + 1} of {STEPS.length}
+          </p>
+        </div>
       </div>
 
       <div className="border-b border-slate-100 px-4 py-3 sm:px-6 lg:px-8">
@@ -1292,7 +1462,7 @@ export default function AddClientPage() {
           <button
             type="button"
             onClick={goBack}
-            disabled={step === 0 || saving}
+            disabled={step === 0 || saving || savingSession}
             className={BTN_SECONDARY}
           >
             Back
@@ -1302,6 +1472,7 @@ export default function AddClientPage() {
             <button
               type="button"
               onClick={goNext}
+              disabled={saving || savingSession}
               className={`${BTN_PRIMARY} sm:min-w-[9rem]`}
             >
               Continue
@@ -1310,7 +1481,7 @@ export default function AddClientPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={saving}
+              disabled={saving || savingSession}
               className={`${BTN_PRIMARY} sm:min-w-[9rem]`}
             >
               {saving ? 'Saving…' : 'Confirm & save'}
