@@ -93,6 +93,7 @@ export function useClients() {
             schedule,
             payments,
             existingSchedules,
+            vehicle.start_date,
           )
           if (!schedulesEqual(schedule, reconciled)) {
             clientChanged = true

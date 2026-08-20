@@ -15,6 +15,7 @@ import {
   rateFromAmount,
 } from '../utils/calculator'
 import { formatNumberInput, parseNumberInput, premiumFromRate } from '../utils/numberInput'
+import { buildClientActivity, getPreviousPolicies } from '../utils/activity'
 import {
   coverMonthsLabel,
   expiryFromCoverMonths,
@@ -35,6 +36,7 @@ import {
 import StatusBadge from '../components/ui/StatusBadge'
 import LottieLoader from '../components/ui/LottieLoader'
 import DateInput from '../components/ui/DateInput'
+import Select from '../components/ui/Select'
 import PageShell from '../components/layout/PageShell'
 import RenewCoverPanel from '../components/modules/RenewCoverPanel'
 
@@ -93,10 +95,17 @@ function suggestedPaymentAmount(vehicle, payments) {
   return summary.outstanding > 0.01 ? summary.outstanding : 0
 }
 
-function initialPaymentForm(vehicles, payments) {
-  const vehicleId = vehicles.length === 1 ? vehicles[0].id : ''
+function initialPaymentForm(vehicles, payments, preset = null) {
+  const vehicleId =
+    preset?.vehicleId || (vehicles.length === 1 ? vehicles[0].id : '')
   const vehicle = vehicles.find(item => item.id === vehicleId)
-  const amount = vehicle ? suggestedPaymentAmount(vehicle, payments) : 0
+  const presetAmount = Number(preset?.amount)
+  const amount =
+    presetAmount > 0.01
+      ? presetAmount
+      : vehicle
+        ? suggestedPaymentAmount(vehicle, payments)
+        : 0
   return {
     vehicleId,
     amount: amount > 0 ? formatNumberInput(String(amount)) : '',
@@ -104,6 +113,8 @@ function initialPaymentForm(vehicles, payments) {
     reference: '',
     notes: '',
     date: new Date().toISOString().split('T')[0],
+    installmentNumber: preset?.installmentNumber ?? null,
+    dueDate: preset?.dueDate ?? null,
   }
 }
 
@@ -289,39 +300,28 @@ function NotesBlock({ title, value, onSave }) {
           >
             {value ? 'Edit' : '+ Add Note'}
           </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(value || '')
-                setEditing(false)
-              }}
-              className="text-xs font-medium text-slate-500 hover:text-slate-700"
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="rounded-md bg-primary-600 px-2.5 py-1 text-xs font-semibold text-white shadow-xs hover:bg-primary-700 disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        )}
+        ) : null}
       </div>
 
       {editing ? (
-        <textarea
-          rows={3}
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          className={`${INPUT} mt-2 text-sm`}
-          placeholder={`Add ${title.toLowerCase()} notes…`}
-        />
+        <>
+          <textarea
+            rows={3}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            className={`${INPUT} mt-2 text-sm`}
+            placeholder={`Add ${title.toLowerCase()} notes…`}
+          />
+          <EditActions
+            onCancel={() => {
+              setDraft(value || '')
+              setEditing(false)
+            }}
+            onSave={save}
+            saving={saving}
+            saveLabel="Save"
+          />
+        </>
       ) : value ? (
         <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700">
           {value}
@@ -333,29 +333,31 @@ function NotesBlock({ title, value, onSave }) {
   )
 }
 
-function SectionEditBar({ editing, onEdit, onCancel, onSave, saving }) {
-  if (editing) {
-    return (
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={saving}
-          className="rounded-lg bg-primary-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-primary-700 disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : 'Save changes'}
-        </button>
-      </div>
-    )
-  }
+function EditActions({ onCancel, onSave, saving, saveLabel = 'Save changes' }) {
+  return (
+    <div className="flex justify-end gap-2 border-t border-slate-200/80 pt-4">
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={saving}
+        className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={saving}
+        className="rounded-lg bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-primary-700 disabled:opacity-50"
+      >
+        {saving ? 'Saving…' : saveLabel}
+      </button>
+    </div>
+  )
+}
+
+function SectionEditBar({ editing, onEdit }) {
+  if (editing) return null
 
   return (
     <button
@@ -381,7 +383,6 @@ function CompactProgress({
   nextDue,
 }) {
   const hasOverpayment = overpayment > 0.01
-  const partialPaid = !fullyPaid && amountPaid > 0 && outstanding > 0
 
   return (
     <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4">
@@ -443,39 +444,37 @@ function CompactProgress({
 
       {nextDue && !fullyPaid && (
         <div className="mt-3 flex items-center justify-between border-t border-slate-200/60 pt-2.5 text-xs">
-          <span className="text-slate-500">Next Due Date</span>
+          <span className="text-slate-500">Next due</span>
           <span className="font-semibold text-slate-800">
             {formatKSh(nextDue.amount)} on {formatDate(nextDue.due_date)}
           </span>
-        </div>
-      )}
-
-      {hasOverpayment && (
-        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-800">
-          Overpayment of {formatKSh(overpayment)} - collected exceeds the premium.
-          Confirm with the client whether this is a credit, refund, or next-period payment.
-        </div>
-      )}
-
-      {partialPaid && (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
-          Balance due - remind the client that {formatKSh(outstanding)} remains on this policy.
-          {nextDue?.due_date
-            ? ` Next installment: ${formatKSh(nextDue.amount)} by ${formatDate(nextDue.due_date)}.`
-            : ''}
         </div>
       )}
     </div>
   )
 }
 
-function TopPolicyOverviewCard({ vehicles, onUpdateVehicle }) {
+function TopPolicyOverviewCard({ vehicles, onRenew }) {
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0]?.id || null)
+  const [tab, setTab] = useState('current')
 
   const activeVehicle = useMemo(
     () => vehicles.find(v => v.id === selectedVehicleId) || vehicles[0],
     [vehicles, selectedVehicleId]
   )
+
+  const previousPolicies = useMemo(
+    () => (activeVehicle ? getPreviousPolicies(activeVehicle) : []),
+    [activeVehicle]
+  )
+
+  useEffect(() => {
+    setTab('current')
+  }, [activeVehicle?.id])
+
+  const expired = isCoverExpired(activeVehicle?.expiry_date)
+  const expiringSoon = isCoverExpiringSoon(activeVehicle?.expiry_date)
+  const showRenew = Boolean(onRenew && activeVehicle && (expired || expiringSoon))
 
   if (!activeVehicle) {
     return (
@@ -498,51 +497,136 @@ function TopPolicyOverviewCard({ vehicles, onUpdateVehicle }) {
             </h3>
           </div>
 
-          {vehicles.length > 1 && (
-            <select
-              value={activeVehicle.id}
-              onChange={e => setSelectedVehicleId(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
-            >
-              {vehicles.map(v => (
-                <option key={v.id} value={v.id}>
-                  {v.registration || v.make} ({POLICY_LABELS[v.policy_type] || 'Policy'})
-                </option>
-              ))}
-            </select>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {vehicles.length > 1 && (
+              <Select
+                size="sm"
+                value={activeVehicle.id}
+                onChange={e => setSelectedVehicleId(e.target.value)}
+              >
+                {vehicles.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.registration || v.make} ({POLICY_LABELS[v.policy_type] || 'Policy'})
+                  </option>
+                ))}
+              </Select>
+            )}
+            <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+              <button
+                type="button"
+                onClick={() => setTab('current')}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
+                  tab === 'current'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Current
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('previous')}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
+                  tab === 'previous'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Previous{previousPolicies.length ? ` (${previousPolicies.length})` : ''}
+              </button>
+            </div>
+          </div>
         </div>
 
-        <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          <DetailItem label="Registration" value={activeVehicle.registration || 'Pending'} />
-          <DetailItem label="Cover Type" value={POLICY_LABELS[activeVehicle.policy_type] ?? activeVehicle.policy_type} />
-          <DetailItem label="Insurer" value={activeVehicle.insurer} />
-          <DetailItem label="Policy No." value={activeVehicle.policy_number} />
-          <DetailItem label="Vehicle Value" value={formatKSh(activeVehicle.vehicle_value ?? 0)} />
-          <DetailItem label="Sum Insured" value={formatKSh(activeVehicle.vehicle_value ?? activeVehicle.sum_insured ?? 0)} />
-          <DetailItem label="Start Date" value={formatDate(activeVehicle.start_date)} />
-          <DetailItem
-            label="Renewal Date"
-            value={
-              isCoverExpired(activeVehicle.expiry_date)
-                ? `${formatDate(activeVehicle.expiry_date)} · Expired`
-                : formatDate(activeVehicle.expiry_date)
-            }
-          />
-          <DetailItem
-            label="Cover length"
-            value={coverMonthsLabel(getCoverMonths(activeVehicle))}
-          />
-          <DetailItem label="Usage" value={USE_LABELS[activeVehicle.use_type] ?? activeVehicle.use_type} />
-        </dl>
+        {tab === 'previous' ? (
+          previousPolicies.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-400">
+              No previous cover periods yet. They appear here after a renewal.
+            </p>
+          ) : (
+            <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+              {previousPolicies.map(period => (
+                <div key={period.id} className="flex flex-wrap items-start justify-between gap-3 bg-white px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">
+                      {formatDate(period.start_date)} – {formatDate(period.expiry_date)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {coverMonthsLabel(period.cover_months)}
+                      {period.insurer ? ` · ${period.insurer}` : ''}
+                      {period.policy_number ? ` · #${period.policy_number}` : ''}
+                      {period.policy_type
+                        ? ` · ${POLICY_LABELS[period.policy_type] || period.policy_type}`
+                        : ''}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold text-slate-900">
+                    {formatKSh(period.premium || 0)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            <DetailItem label="Registration" value={activeVehicle.registration || 'Pending'} />
+            <DetailItem label="Cover Type" value={POLICY_LABELS[activeVehicle.policy_type] ?? activeVehicle.policy_type} />
+            <DetailItem label="Insurer" value={activeVehicle.insurer} />
+            <DetailItem label="Policy No." value={activeVehicle.policy_number} />
+            <DetailItem label="Vehicle Value" value={formatKSh(activeVehicle.vehicle_value ?? 0)} />
+            <DetailItem label="Sum Insured" value={formatKSh(activeVehicle.vehicle_value ?? activeVehicle.sum_insured ?? 0)} />
+            <DetailItem label="Start Date" value={formatDate(activeVehicle.start_date)} />
+            <DetailItem
+              label="Renewal Date"
+              value={
+                isCoverExpired(activeVehicle.expiry_date)
+                  ? `${formatDate(activeVehicle.expiry_date)} · Expired`
+                  : formatDate(activeVehicle.expiry_date)
+              }
+            />
+            <DetailItem
+              label="Cover length"
+              value={coverMonthsLabel(getCoverMonths(activeVehicle))}
+            />
+            <DetailItem label="Usage" value={USE_LABELS[activeVehicle.use_type] ?? activeVehicle.use_type} />
+          </dl>
+        )}
       </div>
+
+      {tab === 'current' && showRenew && (
+        <div
+          className={`mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+            expired
+              ? 'border-danger-200 bg-danger-50/80'
+              : 'border-warning-200 bg-warning-50/80'
+          }`}
+        >
+          <div className="min-w-0">
+            <p className={`text-sm font-semibold ${expired ? 'text-danger-800' : 'text-warning-800'}`}>
+              {expired ? 'Cover has lapsed' : 'Cover expiring soon'}
+            </p>
+            <p className={`mt-0.5 text-xs ${expired ? 'text-danger-700' : 'text-warning-700'}`}>
+              {expired
+                ? `Ended ${formatDate(activeVehicle.expiry_date)}. Renew to start the next period.`
+                : `Renew by ${formatDate(activeVehicle.expiry_date)} to keep this policy in force.`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onRenew(activeVehicle.id)}
+            className={BTN_PRIMARY}
+          >
+            Renew cover
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 border-t border-slate-100 pt-3 flex items-center justify-between text-xs text-slate-500">
         <span className="font-medium text-slate-600">
           {activeVehicle.year ? `${activeVehicle.year} ` : ''}{activeVehicle.make} {activeVehicle.model}
         </span>
         <a href="#vehicles-section" className="font-semibold text-primary-600 hover:text-primary-700">
-          View Schedules & Notes ↓
+          Payment schedule ↓
         </a>
       </div>
     </div>
@@ -552,10 +636,13 @@ function TopPolicyOverviewCard({ vehicles, onUpdateVehicle }) {
 function VehicleCard({
   vehicle,
   payments = [],
+  showVehicleName = false,
   onUpdateVehicle,
   onUpdateSchedule,
   onCreateSchedule,
   onRenewVehicle,
+  onLogPayment,
+  startRenewToken = 0,
 }) {
   const schedules = getVehicleSchedules(vehicle)
   const schedule = schedules[0] ?? null
@@ -573,7 +660,6 @@ function VehicleCard({
   const coverMonths = getCoverMonths(vehicle)
   const expired = isCoverExpired(vehicle.expiry_date)
   const expiringSoon = isCoverExpiringSoon(vehicle.expiry_date)
-  const coverHistory = Array.isArray(vehicle.cover_history) ? vehicle.cover_history : []
 
   const [editingVehicle, setEditingVehicle] = useState(false)
   const [editingCover, setEditingCover] = useState(false)
@@ -593,6 +679,19 @@ function VehicleCard({
   })
 
   const modelOptions = getCarModelOptions(vehicleForm.make)
+
+  const openRenew = () => {
+    setEditingVehicle(false)
+    setEditingCover(false)
+    setEditingDates(false)
+    setEditingPlan(false)
+    setRenewing(true)
+  }
+
+  useEffect(() => {
+    if (!startRenewToken) return
+    openRenew()
+  }, [startRenewToken])
 
   const startVehicleEdit = () => {
     setVehicleForm({
@@ -931,71 +1030,58 @@ function VehicleCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-shadow hover:shadow-md">
-      {/* Card Header */}
+    <article
+      id={`vehicle-${vehicle.id}`}
+      className="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-shadow hover:shadow-md"
+    >
+      {/* Card Header — identity lives in Policy Overview; only disambiguate when there are several vehicles */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/40 px-5 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900">
-              {vehicle.year ? `${vehicle.year} ` : ''}
-              {vehicle.make} {vehicle.model}
-            </h3>
-            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <span className="font-bold tracking-wide uppercase text-slate-700">
-                {vehicle.registration || 'No Reg'}
-              </span>
-              {vehicle.insurer && (
-                <>
-                  <span className="text-slate-300">•</span>
-                  <span>{vehicle.insurer}</span>
-                </>
-              )}
-              {vehicle.policy_number && (
-                <>
-                  <span className="text-slate-300">•</span>
-                  <span className="font-mono text-slate-600">#{vehicle.policy_number}</span>
-                </>
-              )}
-            </div>
-          </div>
+        <div>
+          <h3 className="text-base font-bold text-slate-900">
+            {showVehicleName
+              ? vehicle.registration ||
+                `${vehicle.year ? `${vehicle.year} ` : ''}${vehicle.make} ${vehicle.model}`.trim()
+              : 'This cover'}
+          </h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {showVehicleName
+              ? `${vehicle.year ? `${vehicle.year} ` : ''}${vehicle.make} ${vehicle.model}`.trim() ||
+                'Payment schedule'
+              : 'Payment schedule & notes'}
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {expired && (
+          {expired ? (
             <span className="inline-flex items-center rounded-full border border-danger-200 bg-danger-50 px-3 py-1 text-xs font-semibold text-danger-700">
-              Cover expired
+              Expired
             </span>
-          )}
-          {!expired && expiringSoon && (
+          ) : expiringSoon ? (
             <span className="inline-flex items-center rounded-full border border-warning-200 bg-warning-50 px-3 py-1 text-xs font-semibold text-warning-700">
-              Expiring soon
+              Expiring {formatDate(vehicle.expiry_date)}
+            </span>
+          ) : (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                hasOverpayment
+                  ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                  : fullyPaid
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}
+            >
+              {hasOverpayment ? 'Overpaid' : fullyPaid ? 'Paid' : 'Balance due'}
             </span>
           )}
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-              hasOverpayment
-                ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                : fullyPaid
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-amber-50 text-amber-700 border border-amber-200'
-            }`}
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                hasOverpayment
-                  ? 'bg-sky-500'
-                  : fullyPaid
-                    ? 'bg-emerald-500'
-                    : 'bg-amber-500'
-              }`}
-            />
-            {hasOverpayment ? 'Overpaid' : fullyPaid ? 'Fully Paid' : 'Balance Due'}
-          </span>
+          {onRenewVehicle && !renewing && (expired || expiringSoon) && (
+            <button
+              type="button"
+              onClick={openRenew}
+              className="inline-flex items-center rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white shadow-soft transition hover:bg-primary-700"
+            >
+              Renew cover
+            </button>
+          )}
         </div>
       </div>
 
@@ -1022,50 +1108,17 @@ function VehicleCard({
                 await onRenewVehicle(payload)
                 setRenewing(false)
                 toast(
-                  `Cover renewed for ${coverMonthsLabel(payload.cover_months)} · expires ${formatDate(payload.expiry_date)}.`,
+                  `Cover renewed · ${coverMonthsLabel(payload.cover_months)} until ${formatDate(payload.expiry_date)}.`,
                 )
               } finally {
                 setSaving(false)
               }
             }}
           />
-        ) : (
-          <div
-            className={`flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
-              expired
-                ? 'border-danger-200 bg-danger-50/70'
-                : expiringSoon
-                  ? 'border-warning-200 bg-warning-50/70'
-                  : 'border-slate-200 bg-slate-50/70'
-            }`}
-          >
-            <p className="text-sm text-slate-700">
-              {expired
-                ? `This ${coverMonthsLabel(coverMonths)} cover ended ${formatDate(vehicle.expiry_date)}. Renew for 1 month, 2 months, or a full year.`
-                : expiringSoon
-                  ? `Cover ends ${formatDate(vehicle.expiry_date)}. Renew now with a short period or another full year.`
-                  : `Current cover is ${coverMonthsLabel(coverMonths)} · renews ${formatDate(vehicle.expiry_date)}.`}
-            </p>
-            {onRenewVehicle && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingVehicle(false)
-                  setEditingCover(false)
-                  setEditingDates(false)
-                  setEditingPlan(false)
-                  setRenewing(true)
-                }}
-                className={BTN_PRIMARY}
-              >
-                Renew cover
-              </button>
-            )}
-          </div>
-        )}
+        ) : null}
 
         {/* Section Editors */}
-        <section className="space-y-4">
+        {/* <section className="space-y-4">
           <Subheading
             action={
               <div className="flex items-center gap-1">
@@ -1100,15 +1153,7 @@ function VehicleCard({
 
           {editingVehicle && (
             <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Vehicle Information</h5>
-                <SectionEditBar
-                  editing
-                  onCancel={() => setEditingVehicle(false)}
-                  onSave={saveVehicle}
-                  saving={saving}
-                />
-              </div>
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Vehicle Information</h5>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Registration">
                   <input
@@ -1125,33 +1170,31 @@ function VehicleCard({
                   />
                 </Field>
                 <Field label="Make">
-                  <select
+                  <Select
                     value={vehicleForm.make}
                     onChange={e => setVehicleForm(prev => ({ ...prev, make: e.target.value, model: '' }))}
-                    className={INPUT}
                   >
                     {CAR_MAKE_OPTIONS.map(option => (
                       <option key={option.value || 'empty'} value={option.value}>
                         {option.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
                 <Field label="Model">
                   {vehicleForm.make &&
                   CAR_MAKE_OPTIONS.some(o => o.value === vehicleForm.make) &&
                   vehicleForm.make !== 'Other' ? (
-                    <select
+                    <Select
                       value={vehicleForm.model}
                       onChange={e => setVehicleForm(prev => ({ ...prev, model: e.target.value }))}
-                      className={INPUT}
                     >
                       {modelOptions.map(option => (
                         <option key={option.value || 'empty'} value={option.value}>
                           {option.label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   ) : (
                     <input
                       value={vehicleForm.model}
@@ -1184,63 +1227,57 @@ function VehicleCard({
                   />
                 </Field>
                 <Field label="Use Type">
-                  <select
+                  <Select
                     value={vehicleForm.use_type}
                     onChange={e => setVehicleForm(prev => ({ ...prev, use_type: e.target.value }))}
-                    className={INPUT}
                   >
                     {USE_TYPES.map(type => (
                       <option key={type.value} value={type.value}>
                         {type.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
               </div>
+              <EditActions
+                onCancel={() => setEditingVehicle(false)}
+                onSave={saveVehicle}
+                saving={saving}
+              />
             </div>
           )}
 
           {editingCover && (
             <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Cover Details</h5>
-                <SectionEditBar
-                  editing
-                  onCancel={() => setEditingCover(false)}
-                  onSave={saveCover}
-                  saving={saving}
-                />
-              </div>
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Cover Details</h5>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Cover Type">
-                  <select
+                  <Select
                     value={coverForm.policy_type}
                     onChange={e => setCoverForm(prev => ({ ...prev, policy_type: e.target.value }))}
-                    className={INPUT}
                   >
                     {POLICY_TYPES.map(type => (
                       <option key={type.value} value={type.value}>
                         {type.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
                 <Field label="Insurer">
-                  <select
+                  <Select
                     value={
                       INSURER_OPTIONS.some(o => o.value && o.value === coverForm.insurer)
                         ? coverForm.insurer
                         : 'Other'
                     }
                     onChange={e => setCoverForm(prev => ({ ...prev, insurer: e.target.value === 'Other' ? '' : e.target.value }))}
-                    className={INPUT}
                   >
                     {INSURER_OPTIONS.map(option => (
                       <option key={option.value || 'empty'} value={option.value}>
                         {option.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
                 {!INSURER_OPTIONS.some(o => o.value && o.value === coverForm.insurer) && (
                   <Field label="Insurer Name" className="sm:col-span-2">
@@ -1299,20 +1336,17 @@ function VehicleCard({
                   />
                 </Field>
               </div>
+              <EditActions
+                onCancel={() => setEditingCover(false)}
+                onSave={saveCover}
+                saving={saving}
+              />
             </div>
           )}
 
           {editingDates && (
             <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Effective Dates</h5>
-                <SectionEditBar
-                  editing
-                  onCancel={() => setEditingDates(false)}
-                  onSave={saveDates}
-                  saving={saving}
-                />
-              </div>
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Edit Effective Dates</h5>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Start Date" required>
                   <DateInput
@@ -1335,9 +1369,14 @@ function VehicleCard({
                   />
                 </Field>
               </div>
+              <EditActions
+                onCancel={() => setEditingDates(false)}
+                onSave={saveDates}
+                saving={saving}
+              />
             </div>
           )}
-        </section>
+        </section> */}
 
         {/* Installment Plan Section */}
         <section className="border-t border-slate-100 pt-5 space-y-4">
@@ -1346,9 +1385,6 @@ function VehicleCard({
               <SectionEditBar
                 editing={editingPlan}
                 onEdit={startPlanEdit}
-                onCancel={() => setEditingPlan(false)}
-                onSave={savePlan}
-                saving={saving}
               />
             }
           >
@@ -1567,29 +1603,69 @@ function VehicleCard({
                   </div>
                 )
               })()}
+              <EditActions
+                onCancel={() => setEditingPlan(false)}
+                onSave={savePlan}
+                saving={saving}
+              />
             </div>
           ) : schedule && installments.length > 0 ? (
             <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white">
               <div className="divide-y divide-slate-100">
                 {installments.map((installment, index) => {
                   const status = getInstallmentStatus(installment)
+                  const canLog = Boolean(onLogPayment) && status.remaining > 0.01
+                  const RowTag = canLog ? 'button' : 'div'
 
                   return (
-                    <div
+                    <RowTag
                       key={`${installment.number}-${installment.due_date}-${index}`}
-                      className="flex flex-wrap items-center justify-between gap-3 p-3.5 transition hover:bg-slate-50/50"
+                      type={canLog ? 'button' : undefined}
+                      onClick={
+                        canLog
+                          ? () =>
+                              onLogPayment({
+                                vehicleId: vehicle.id,
+                                amount: status.remaining,
+                                installmentNumber: installment.number,
+                                dueDate: installment.due_date,
+                              })
+                          : undefined
+                      }
+                      className={`group flex w-full flex-wrap items-center justify-between gap-3 p-3.5 text-left transition ${
+                        canLog
+                          ? 'cursor-pointer hover:bg-primary-50/50 focus:outline-none focus-visible:bg-primary-50/70'
+                          : 'hover:bg-slate-50/50'
+                      }`}
+                      title={canLog ? 'Log payment for this installment' : undefined}
+                      aria-label={
+                        canLog
+                          ? `Log payment for installment ${installment.number}, due ${formatDate(installment.due_date)}`
+                          : undefined
+                      }
                     >
                       <div className="flex items-center gap-3">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600">
                           #{installment.number}
                         </span>
                         <div>
-                          <p className="text-sm font-semibold text-slate-800">
+                          <p
+                            className={`text-sm font-semibold ${
+                              canLog
+                                ? 'text-primary-700 underline-offset-2 group-hover:underline'
+                                : 'text-slate-800'
+                            }`}
+                          >
                             Due {formatDate(installment.due_date)}
                           </p>
                           {status.paidAmount > 0 && status.remaining > 0 && (
                             <p className="text-xs text-slate-400">
                               {formatKSh(status.paidAmount)} paid • {formatKSh(status.remaining)} remaining
+                            </p>
+                          )}
+                          {canLog && (
+                            <p className="mt-0.5 text-[11px] font-semibold text-primary-600">
+                              Tap to log payment
                             </p>
                           )}
                         </div>
@@ -1603,7 +1679,7 @@ function VehicleCard({
                           {status.label}
                         </span>
                       </div>
-                    </div>
+                    </RowTag>
                   )
                 })}
               </div>
@@ -1616,35 +1692,6 @@ function VehicleCard({
             </div>
           )}
         </section>
-
-        {/* Notes Section */}
-        {coverHistory.length > 0 && (
-          <section className="border-t border-slate-100 pt-5 space-y-3">
-            <Subheading>Previous cover</Subheading>
-            <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
-              {coverHistory.map((period, index) => (
-                <div
-                  key={`${period.schedule_id || period.archived_at || index}`}
-                  className="flex flex-wrap items-center justify-between gap-2 bg-white px-4 py-3 text-sm"
-                >
-                  <div>
-                    <p className="font-semibold text-slate-800">
-                      {formatDate(period.start_date)} – {formatDate(period.expiry_date)}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {coverMonthsLabel(period.cover_months || 12)}
-                      {period.insurer ? ` · ${period.insurer}` : ''}
-                      {period.policy_number ? ` · #${period.policy_number}` : ''}
-                    </p>
-                  </div>
-                  <p className="font-semibold text-slate-900">
-                    {formatKSh(period.premium || 0)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* Notes Section */}
         <section className="border-t border-slate-100 pt-5 space-y-3">
@@ -1677,10 +1724,11 @@ function LogPaymentDialog({
   vehicles,
   payments,
   saving,
+  preset = null,
   onClose,
   onSubmit,
 }) {
-  const [form, setForm] = useState(() => initialPaymentForm(vehicles, payments))
+  const [form, setForm] = useState(() => initialPaymentForm(vehicles, payments, preset))
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
   const multiVehicle = vehicles.length > 1
   const selectedVehicle = vehicles.find(item => item.id === form.vehicleId)
@@ -1700,6 +1748,8 @@ function LogPaymentDialog({
       ...prev,
       vehicleId,
       amount: amount > 0 ? formatNumberInput(String(amount)) : '',
+      installmentNumber: null,
+      dueDate: null,
     }))
   }
 
@@ -1735,7 +1785,11 @@ function LogPaymentDialog({
               Log payment
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Record a payment against this client's policy.
+              {form.installmentNumber
+                ? `Installment #${form.installmentNumber}${
+                    form.dueDate ? ` · due ${formatDate(form.dueDate)}` : ''
+                  }. Amount is the remaining balance.`
+                : "Record a payment against this client's policy."}
             </p>
           </div>
           <button
@@ -1750,11 +1804,10 @@ function LogPaymentDialog({
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Vehicle" required className="sm:col-span-2">
             {multiVehicle ? (
-              <select
+              <Select
                 required
                 value={form.vehicleId}
                 onChange={e => selectVehicle(e.target.value)}
-                className={INPUT}
               >
                 <option value="">Select vehicle</option>
                 {vehicles.map(vehicle => (
@@ -1762,7 +1815,7 @@ function LogPaymentDialog({
                     {vehiclePaymentLabel(vehicle)}
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : (
               <>
                 <input type="hidden" name="vehicleId" value={form.vehicleId} />
@@ -1786,17 +1839,16 @@ function LogPaymentDialog({
           </Field>
 
           <Field label="Method">
-            <select
+            <Select
               value={form.method}
               onChange={e => set('method', e.target.value)}
-              className={INPUT}
             >
               {PAYMENT_METHODS.map(method => (
                 <option key={method.value} value={method.value}>
                   {method.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <Field label="Reference">
@@ -1876,6 +1928,8 @@ export default function ClientDetailPage() {
   const [insuredForm, setInsuredForm] = useState({})
   const [savingInsured, setSavingInsured] = useState(false)
   const [showLogPayment, setShowLogPayment] = useState(false)
+  const [logPaymentPreset, setLogPaymentPreset] = useState(null)
+  const [renewIntent, setRenewIntent] = useState({ vehicleId: null, n: 0 })
 
   const clientPayments = useMemo(
     () =>
@@ -1915,6 +1969,7 @@ export default function ClientDetailPage() {
   }
 
   const vehicles = client.vehicles ?? []
+  const activity = buildClientActivity({ vehicles, payments: clientPayments })
 
   const vehicleSummaries = vehicles.map(vehicle => {
     const summary = getVehicleCollectionSummary(vehicle, clientPayments)
@@ -1977,6 +2032,15 @@ export default function ClientDetailPage() {
     }
   }
 
+  const openLogPayment = (preset = null) => {
+    if (!vehicles.length) {
+      toast('Add a vehicle before logging a payment.', 'error')
+      return
+    }
+    setLogPaymentPreset(preset)
+    setShowLogPayment(true)
+  }
+
   const handleLogPayment = async form => {
     const vehicle = vehicles.find(item => item.id === form.vehicleId)
     if (!vehicle) {
@@ -1986,12 +2050,6 @@ export default function ClientDetailPage() {
 
     const schedule = getVehicleSchedules(vehicle)[0]
     const amount = Number(parseNumberInput(form.amount))
-    const vehiclePayments = clientPayments.filter(
-      payment => payment.vehicle_id === vehicle.id,
-    )
-    const summary = getVehicleCollectionSummary(vehicle, vehiclePayments)
-    const priorPaid = summary.amountPaid
-    const premium = summary.totalPremium || Number(vehicle.premium) || 0
 
     try {
       await logPayment({
@@ -2006,24 +2064,8 @@ export default function ClientDetailPage() {
       })
       await refetch()
       setShowLogPayment(false)
-
-      const newPaid = priorPaid + amount
-      const remaining = Math.max(0, premium - newPaid)
-      const overpaid = Math.max(0, newPaid - premium)
-
-      if (overpaid > 0.01) {
-        toast(
-          `Payment logged. Overpayment of ${formatKSh(overpaid)} - confirm credit or refund with the client.`,
-          'info',
-        )
-      } else if (remaining > 0.01) {
-        toast(
-          `Payment logged. Balance due: ${formatKSh(remaining)} - remind the client before cover lapses.`,
-          'info',
-        )
-      } else {
-        toast('Payment logged - portfolio balance updated.')
-      }
+      setLogPaymentPreset(null)
+      toast(`Payment of ${formatKSh(amount)} logged.`)
     } catch (err) {
       toast(err.message || 'Could not log payment.', 'error')
     }
@@ -2073,9 +2115,6 @@ export default function ClientDetailPage() {
                   <SectionEditBar
                     editing={editingInsured}
                     onEdit={startInsuredEdit}
-                    onCancel={() => setEditingInsured(false)}
-                    onSave={saveInsured}
-                    saving={savingInsured}
                   />
                   {client.phone && (
                     <a href={`tel:${client.phone}`} className={BTN_SECONDARY}>
@@ -2085,13 +2124,7 @@ export default function ClientDetailPage() {
                   <button
                     type="button"
                     className={BTN_PRIMARY}
-                    onClick={() => {
-                      if (!vehicles.length) {
-                        toast('Add a vehicle before logging a payment.', 'error')
-                        return
-                      }
-                      setShowLogPayment(true)
-                    }}
+                    onClick={() => openLogPayment()}
                   >
                     Log Payment
                   </button>
@@ -2139,6 +2172,11 @@ export default function ClientDetailPage() {
                       />
                     </Field>
                   </div>
+                  <EditActions
+                    onCancel={() => setEditingInsured(false)}
+                    onSave={saveInsured}
+                    saving={savingInsured}
+                  />
                 </div>
               ) : (
                 <div className="mt-4 border-t border-slate-100 pt-4 space-y-3">
@@ -2181,7 +2219,14 @@ export default function ClientDetailPage() {
           <section className="lg:col-span-6">
             <TopPolicyOverviewCard
               vehicles={vehicles}
-              onUpdateVehicle={updateVehicle}
+              onRenew={vehicleId => {
+                setRenewIntent(prev => ({ vehicleId, n: prev.n + 1 }))
+                window.requestAnimationFrame(() => {
+                  document
+                    .getElementById(`vehicle-${vehicleId}`)
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                })
+              }}
             />
           </section>
         </div>
@@ -2264,6 +2309,7 @@ export default function ClientDetailPage() {
                   <VehicleCard
                     key={vehicle.id}
                     vehicle={vehicle}
+                    showVehicleName={vehicles.length > 1}
                     payments={clientPayments.filter(p => p.vehicle_id === vehicle.id)}
                     onUpdateVehicle={updates => updateVehicle(vehicle.id, updates)}
                     onUpdateSchedule={updates => {
@@ -2273,6 +2319,10 @@ export default function ClientDetailPage() {
                     }}
                     onCreateSchedule={payload => createPaymentSchedule(vehicle.id, payload)}
                     onRenewVehicle={payload => renewVehicle(vehicle.id, payload)}
+                    onLogPayment={openLogPayment}
+                    startRenewToken={
+                      renewIntent.vehicleId === vehicle.id ? renewIntent.n : 0
+                    }
                   />
                 ))}
               </div>
@@ -2281,15 +2331,13 @@ export default function ClientDetailPage() {
 
           {/* Payment Log History Sidebar */}
           <section className="space-y-4 xl:col-span-2">
-            <h2 className="text-base font-bold text-slate-900">
-              Recent Transactions
-            </h2>
+            <h2 className="text-base font-bold text-slate-900">Activity</h2>
 
             {paymentsLoading ? (
               <div className="rounded-2xl border border-slate-200/80 bg-white p-6 text-center text-xs text-slate-400">
-                Loading payment records...
+                Loading activity...
               </div>
-            ) : clientPayments.length === 0 ? (
+            ) : activity.length === 0 ? (
               <EmptyState
                 icon={
                   <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2297,19 +2345,51 @@ export default function ClientDetailPage() {
                   </svg>
                 }
               >
-                No payment activity recorded for this client.
+                Payments and renewals for this client will show here.
               </EmptyState>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
                 <div className="divide-y divide-slate-100">
-                  {clientPayments.map(payment => {
-                    const vehicle = vehicles.find(item => item.id === payment.vehicle_id)
+                  {activity.map(item => {
+                    if (item.type === 'renewal') {
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between gap-3 p-4"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-800">
+                                Renewal
+                              </span>
+                              <span className="text-xs text-slate-400">
+                                {formatDate(item.date)}
+                              </span>
+                            </div>
+                            <p className="mt-1 truncate text-xs font-semibold text-slate-700">
+                              {item.vehicle?.registration} · {item.title}
+                            </p>
+                            <p className="mt-0.5 text-xs text-slate-400">
+                              {formatDate(item.period.start_date)} – {formatDate(item.period.expiry_date)}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <span className="text-sm font-bold text-slate-800">
+                              {formatKSh(item.period.premium || 0)}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    const payment = item.payment
+                    const vehicle = vehicles.find(v => v.id === payment.vehicle_id)
                     const methodStyles = getPaymentMethodStyles(payment.method)
 
                     return (
                       <div
-                        key={payment.id}
-                        className="flex items-center justify-between gap-3 p-4 transition hover:bg-slate-50/60"
+                        key={item.id}
+                        className="flex items-center justify-between gap-3 p-4"
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -2322,8 +2402,8 @@ export default function ClientDetailPage() {
                             </span>
                           </div>
                           <p className="mt-1 truncate text-xs font-semibold text-slate-700">
-                            {vehicle?.registration || 'General Policy Payment'}
-                            {vehicle ? ` (${vehicle.make} ${vehicle.model})` : ''}
+                            {vehicle?.registration || 'Payment'}
+                            {vehicle ? ` · ${vehicle.make} ${vehicle.model}` : ''}
                           </p>
                           {payment.reference && (
                             <p className="mt-0.5 font-mono text-xs text-slate-400">
@@ -2352,7 +2432,11 @@ export default function ClientDetailPage() {
           vehicles={vehicles}
           payments={clientPayments}
           saving={paymentSaving}
-          onClose={() => setShowLogPayment(false)}
+          preset={logPaymentPreset}
+          onClose={() => {
+            setShowLogPayment(false)
+            setLogPaymentPreset(null)
+          }}
           onSubmit={handleLogPayment}
         />
       )}

@@ -14,6 +14,8 @@ import LottieLoader from '../components/ui/LottieLoader'
 import PageShell from '../components/layout/PageShell'
 import PageHeader from '../components/layout/PageHeader'
 import StatusBadge from '../components/ui/StatusBadge'
+import SearchField from '../components/ui/SearchField'
+import Select from '../components/ui/Select'
 import { INPUT, LABEL } from '../constants/formStyles'
 
 const METHODS = [
@@ -25,6 +27,20 @@ const METHODS = [
 
 const METHOD_LABELS = Object.fromEntries(METHODS.map(m => [m.value, m.label]))
 
+function paymentClientName(payment, clients) {
+  if (payment.clients?.name) return payment.clients.name
+  return clients.find(client => client.id === payment.client_id)?.name || 'Client'
+}
+
+function paymentVehicleReg(payment, clients) {
+  if (payment.vehicles?.registration) return payment.vehicles.registration
+  for (const client of clients) {
+    const vehicle = (client.vehicles ?? []).find(item => item.id === payment.vehicle_id)
+    if (vehicle?.registration) return vehicle.registration
+  }
+  return '-'
+}
+
 function vehicleLabel(vehicle) {
   const year = vehicle.year ? `${vehicle.year} ` : ''
   return `${vehicle.registration || 'No Reg'} · ${year}${vehicle.make || ''} ${vehicle.model || ''}`.trim()
@@ -35,6 +51,7 @@ export default function PaymentsPage() {
   const { clients, refetch: refetchClients } = useClients()
 
   const [showForm, setShowForm] = useState(false)
+  const [clientQuery, setClientQuery] = useState('')
   const [form, setForm] = useState({
     clientId: '',
     vehicleId: '',
@@ -47,11 +64,40 @@ export default function PaymentsPage() {
 
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
 
-  const clientOptions = clients.filter(c => (c.vehicles?.length ?? 0) > 0)
+  const emptyForm = () => ({
+    clientId: '',
+    vehicleId: '',
+    amount: '',
+    method: 'mpesa',
+    reference: '',
+    notes: '',
+    date: new Date().toISOString().split('T')[0],
+  })
+
+  const clientOptions = useMemo(() => {
+    const withVehicles = clients.filter(c => (c.vehicles?.length ?? 0) > 0)
+    const q = clientQuery.trim().toLowerCase()
+    if (!q) return withVehicles
+
+    return withVehicles.filter(c => {
+      const name = (c.name || '').toLowerCase()
+      const phone = String(c.phone || '')
+      const idNumber = String(c.id_number || '').toLowerCase()
+      const plateMatch = (c.vehicles ?? []).some(v =>
+        String(v.registration || '').toLowerCase().includes(q)
+      )
+      return (
+        name.includes(q) ||
+        phone.includes(clientQuery.trim()) ||
+        idNumber.includes(q) ||
+        plateMatch
+      )
+    })
+  }, [clients, clientQuery])
+
   const selectedClient = clients.find(c => c.id === form.clientId)
   const vehicleOptions = selectedClient?.vehicles ?? []
   const multiVehicle = vehicleOptions.length > 1
-  const selectedVehicle = vehicleOptions.find(v => v.id === form.vehicleId)
 
   const clientPayments = useMemo(
     () =>
@@ -81,14 +127,6 @@ export default function PaymentsPage() {
       })),
     }
   }, [selectedClient, clientPayments])
-
-  const selectedVehicleSummary = useMemo(() => {
-    if (!selectedVehicle) return null
-    return getVehicleCollectionSummary(
-      selectedVehicle,
-      clientPayments.filter(p => p.vehicle_id === selectedVehicle.id)
-    )
-  }, [selectedVehicle, clientPayments])
 
   const monthTotal = useMemo(() => {
     const monthStart = startOfMonth(new Date())
@@ -126,8 +164,6 @@ export default function PaymentsPage() {
     const vehicle = vehicleOptions.find(v => v.id === form.vehicleId)
     const schedule = vehicle ? getVehicleSchedules(vehicle)[0] : null
     const amount = parseNumberInput(form.amount)
-    const priorPaid = selectedVehicleSummary?.amountPaid ?? 0
-      const premium = selectedVehicleSummary?.totalPremium ?? (Number(vehicle?.premium) || 0)
 
     try {
       await logPayment({
@@ -142,34 +178,10 @@ export default function PaymentsPage() {
       })
       await refetchClients()
 
-      const newPaid = priorPaid + amount
-      const remaining = Math.max(0, premium - newPaid)
-      const overpaid = Math.max(0, newPaid - premium)
-
-      setForm({
-        clientId: '',
-        vehicleId: '',
-        amount: '',
-        method: 'mpesa',
-        reference: '',
-        notes: '',
-        date: new Date().toISOString().split('T')[0],
-      })
+      setForm(emptyForm())
+      setClientQuery('')
       setShowForm(false)
-
-      if (overpaid > 0.01) {
-        toast(
-          `Payment logged. Overpayment of ${formatKSh(overpaid)} - confirm credit or refund with the client.`,
-          'info'
-        )
-      } else if (remaining > 0.01) {
-        toast(
-          `Payment logged. Balance due: ${formatKSh(remaining)} - remind the client before cover lapses.`,
-          'info'
-        )
-      } else {
-        toast('Payment logged - portfolio balance updated.')
-      }
+      toast(`Payment of ${formatKSh(amount)} logged.`)
     } catch (err) {
       toast(err.message || 'Could not log payment.', 'error')
     }
@@ -182,7 +194,10 @@ export default function PaymentsPage() {
         actions={
           <button
             type="button"
-            onClick={() => setShowForm(prev => !prev)}
+            onClick={() => {
+              setShowForm(prev => !prev)
+              setClientQuery('')
+            }}
             className="rounded-xl bg-primary-600 px-3.5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700"
           >
             {showForm ? 'Close' : 'Log payment'}
@@ -228,19 +243,73 @@ export default function PaymentsPage() {
                 <label className={LABEL}>
                   Client <span className="normal-case text-red-600">*</span>
                 </label>
-                <select
-                  required
-                  value={form.clientId}
-                  onChange={e => selectClient(e.target.value)}
-                  className={`mt-1.5 ${INPUT}`}
-                >
-                  <option value="">Select client</option>
-                  {clientOptions.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                {selectedClient ? (
+                  <div className="mt-1.5 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-900">
+                        {selectedClient.name}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">
+                        {[selectedClient.phone, selectedClient.id_number]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        selectClient('')
+                        setClientQuery('')
+                      }}
+                      className="shrink-0 text-xs font-semibold text-primary-600 hover:text-primary-700"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-1.5">
+                      <SearchField
+                        placeholder="Search by name, phone, or plate..."
+                        value={clientQuery}
+                        onChange={e => setClientQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="mt-1.5 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white">
+                      {clientOptions.length === 0 ? (
+                        <p className="px-3 py-2.5 text-sm text-slate-400">
+                          {clientQuery.trim()
+                            ? 'No clients found for that search.'
+                            : 'No clients with vehicles yet.'}
+                        </p>
+                      ) : (
+                        clientOptions.map(c => {
+                          const plates = (c.vehicles ?? [])
+                            .map(v => v.registration)
+                            .filter(Boolean)
+                            .join(', ')
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => selectClient(c.id)}
+                              className="flex w-full items-start justify-between gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-b-0 hover:bg-primary-50/60"
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm font-medium text-slate-900">
+                                  {c.name}
+                                </span>
+                                <span className="mt-0.5 block truncate text-xs text-slate-500">
+                                  {[c.phone, plates].filter(Boolean).join(' · ')}
+                                </span>
+                              </span>
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="sm:col-span-2">
@@ -248,15 +317,15 @@ export default function PaymentsPage() {
                   Vehicle <span className="normal-case text-red-600">*</span>
                 </label>
                 {!form.clientId ? (
-                  <select disabled className={`mt-1.5 ${INPUT}`} value="">
+                  <Select disabled className="mt-1.5" value="">
                     <option value="">Select a client first</option>
-                  </select>
+                  </Select>
                 ) : multiVehicle ? (
-                  <select
+                  <Select
                     required
                     value={form.vehicleId}
                     onChange={e => set('vehicleId', e.target.value)}
-                    className={`mt-1.5 ${INPUT}`}
+                    className="mt-1.5"
                   >
                     <option value="">Select vehicle</option>
                     {vehicleOptions.map(v => (
@@ -264,7 +333,7 @@ export default function PaymentsPage() {
                         {vehicleLabel(v)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 ) : (
                   <>
                     <input type="hidden" name="vehicleId" value={form.vehicleId} />
@@ -294,17 +363,17 @@ export default function PaymentsPage() {
 
               <div>
                 <label className={LABEL}>Method</label>
-                <select
+                <Select
                   value={form.method}
                   onChange={e => set('method', e.target.value)}
-                  className={`mt-1.5 ${INPUT}`}
+                  className="mt-1.5"
                 >
                   {METHODS.map(m => (
                     <option key={m.value} value={m.value}>
                       {m.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div>
@@ -418,22 +487,6 @@ export default function PaymentsPage() {
                   </div>
                 </div>
 
-                {clientCollection.overpayment > 0.01 && (
-                  <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/80 px-3 py-2.5 text-xs text-sky-800">
-                    Overpayment of {formatKSh(clientCollection.overpayment)} - collected
-                    exceeds the premium. Confirm whether this is a credit, refund, or
-                    next-period payment.
-                  </div>
-                )}
-
-                {clientCollection.outstanding > 0.01 && (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-xs text-amber-800">
-                    Balance due - if they only paid for short cover (e.g. one month),
-                    remind them that {formatKSh(clientCollection.outstanding)} is still
-                    outstanding on the full premium.
-                  </div>
-                )}
-
                 <div className="mt-4 space-y-2">
                   <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                     Vehicles
@@ -508,8 +561,8 @@ export default function PaymentsPage() {
               {/* Mobile cards */}
               <div className="space-y-2.5 lg:hidden">
                 {payments.map(payment => {
-                  const clientName = payment.clients?.name ?? 'Client'
-                  const reg = payment.vehicles?.registration ?? ''
+                  const clientName = paymentClientName(payment, clients)
+                  const reg = paymentVehicleReg(payment, clients)
                   return (
                     <Link
                       key={payment.id}
@@ -562,7 +615,7 @@ export default function PaymentsPage() {
                             to={`/clients/${payment.client_id}`}
                             className="font-semibold text-slate-900 hover:text-primary-600"
                           >
-                            {payment.clients?.name ?? 'Client'}
+                            {paymentClientName(payment, clients)}
                           </Link>
                           {payment.reference && (
                             <div className="mt-0.5 text-xs text-slate-400">
@@ -571,7 +624,7 @@ export default function PaymentsPage() {
                           )}
                         </td>
                         <td className="px-5 py-3.5 text-slate-600">
-                          {payment.vehicles?.registration ?? '-'}
+                          {paymentVehicleReg(payment, clients)}
                         </td>
                         <td className="px-5 py-3.5 text-slate-600">
                           {METHOD_LABELS[payment.method] ?? payment.method}

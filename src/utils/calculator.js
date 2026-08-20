@@ -144,10 +144,21 @@ export function getVehicleCollectionSummary(vehicle, payments = []) {
     ) || 0
   )
 
-  const related = paymentsForSchedule(schedule, payments, schedules, vehicle?.id)
+  const related = paymentsForSchedule(
+    schedule,
+    payments,
+    schedules,
+    vehicle?.id,
+    vehicle?.start_date,
+  )
   const paymentsTotal = sumPayments(related)
   const schedulePaid = schedule ? getAmountPaid(schedule) : 0
-  const amountPaid = round2(Math.max(schedulePaid, paymentsTotal))
+  const hasLoggedReceipts = (payments ?? []).some(
+    payment => payment.vehicle_id === vehicle?.id,
+  )
+  const amountPaid = round2(
+    hasLoggedReceipts ? paymentsTotal : Math.max(schedulePaid, paymentsTotal),
+  )
   const outstanding = Math.max(0, round2(totalPremium - amountPaid))
   const overpayment =
     totalPremium > 0 ? Math.max(0, round2(amountPaid - totalPremium)) : 0
@@ -232,7 +243,12 @@ export function applyPaymentToSchedule(schedule, amount, paidAt) {
  * @param {import('../types').Payment[]} payments
  * @returns {import('../types').PaymentSchedule}
  */
-export function reconcileScheduleWithPayments(schedule, payments, allSchedules) {
+export function reconcileScheduleWithPayments(
+  schedule,
+  payments,
+  allSchedules,
+  currentStartDate,
+) {
   if (!schedule) return schedule
 
   const related = paymentsForSchedule(
@@ -240,18 +256,41 @@ export function reconcileScheduleWithPayments(schedule, payments, allSchedules) 
     payments,
     allSchedules ?? [schedule],
     schedule.vehicle_id,
+    currentStartDate,
   )
   const paymentsTotal = sumPayments(related)
   const schedulePaid = getAmountPaid(schedule)
+  const latest = [...related].sort((a, b) =>
+    String(b.date).localeCompare(String(a.date)),
+  )[0]
+  const paidAt = latest?.date || new Date().toISOString().slice(0, 10)
+
+  if (paymentsTotal + 0.01 < schedulePaid) {
+    return applyPaymentToSchedule(
+      clearScheduleCredit(schedule),
+      paymentsTotal,
+      paidAt,
+    )
+  }
+
   const gap = round2(paymentsTotal - schedulePaid)
   if (gap <= 0.01) return schedule
 
-  const latest = [...related].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0]
-  return applyPaymentToSchedule(
-    schedule,
-    gap,
-    latest?.date || new Date().toISOString().slice(0, 10)
-  )
+  return applyPaymentToSchedule(schedule, gap, paidAt)
+}
+
+function clearScheduleCredit(schedule) {
+  return {
+    ...schedule,
+    down_payment_paid: false,
+    down_payment_paid_at: null,
+    installments: (schedule.installments ?? []).map(item => ({
+      ...item,
+      paid: false,
+      paid_at: null,
+      paid_amount: null,
+    })),
+  }
 }
 
 /**
@@ -285,25 +324,62 @@ export function getCurrentSchedule(vehicle) {
 }
 
 /**
- * Payments that belong to one schedule.
- * Unscoped legacy payments (no schedule_id) stay on the oldest schedule
- * so a renewal does not look fully paid from last year's receipts.
+ * Payments that belong to one cover period.
+ * Current period: matching schedule_id, or unscoped receipts on/after the new start date.
+ * Older periods keep last year's receipts so a renewal is not marked overpaid.
  */
-export function paymentsForSchedule(schedule, payments, allSchedules, vehicleId) {
+export function paymentsForSchedule(
+  schedule,
+  payments,
+  allSchedules,
+  vehicleId,
+  currentStartDate,
+) {
   const resolvedVehicleId = vehicleId || schedule?.vehicle_id
+  const currentStart = currentStartDate
+    ? String(currentStartDate).slice(0, 10)
+    : ''
+  const paymentDate = payment =>
+    String(payment.date || payment.created_at || '').slice(0, 10)
+
   if (!schedule) {
-    return (payments ?? []).filter(payment => payment.vehicle_id === resolvedVehicleId)
+    return (payments ?? []).filter(payment => {
+      if (payment.vehicle_id !== resolvedVehicleId) return false
+      if (currentStart && paymentDate(payment) < currentStart) return false
+      return true
+    })
   }
 
   const schedules = allSchedules?.length ? allSchedules : [schedule]
-  const oldest = [...schedules].sort((a, b) =>
-    String(a.created_at || '').localeCompare(String(b.created_at || '')),
+  const newest = [...schedules].sort((a, b) =>
+    String(b.created_at || '').localeCompare(String(a.created_at || '')),
   )[0]
+  const isCurrent = newest?.id === schedule.id
 
   return (payments ?? []).filter(payment => {
-    if (payment.schedule_id === schedule.id) return true
+    if (payment.vehicle_id && payment.vehicle_id !== resolvedVehicleId) {
+      return false
+    }
+
+    if (payment.schedule_id === schedule.id) {
+      if (isCurrent && currentStart && paymentDate(payment) < currentStart) {
+        return false
+      }
+      return true
+    }
+
     if (payment.schedule_id) return false
     if (payment.vehicle_id !== resolvedVehicleId) return false
+
+    if (currentStart) {
+      return isCurrent
+        ? paymentDate(payment) >= currentStart
+        : paymentDate(payment) < currentStart
+    }
+
+    const oldest = [...schedules].sort((a, b) =>
+      String(a.created_at || '').localeCompare(String(b.created_at || '')),
+    )[0]
     return oldest?.id === schedule.id
   })
 }

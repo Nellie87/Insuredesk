@@ -1,11 +1,6 @@
 import { useMemo, useState } from 'react'
 import DateInput from '../ui/DateInput'
-import {
-  INPUT,
-  LABEL,
-  BTN_PRIMARY,
-  BTN_SECONDARY,
-} from '../../constants/formStyles'
+import { INPUT, LABEL } from '../../constants/formStyles'
 import {
   buildInstallmentSchedule,
   defaultInstallmentCountForCover,
@@ -181,24 +176,15 @@ export default function RenewCoverPanel({ vehicle, onCancel, onSave, saving }) {
 
   return (
     <div className="rounded-xl border border-primary-200 bg-primary-50/40 p-4 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h5 className="text-xs font-bold uppercase tracking-wider text-primary-800">
-            Renew cover
-          </h5>
-          <p className="mt-1 text-sm text-slate-600">
-            Last period was {coverMonthsLabel(lastMonths)}
-            {lastPremium ? ` · ${formatKSh(lastPremium)}` : ''}. Choose 1–12 months
-            for the next cover, then confirm premium and payments.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-        >
-          Cancel
-        </button>
+      <div>
+        <h5 className="text-xs font-bold uppercase tracking-wider text-primary-800">
+          Renew cover
+        </h5>
+        <p className="mt-1 text-sm text-slate-600">
+          Last period was {coverMonthsLabel(lastMonths)}
+          {lastPremium ? ` · ${formatKSh(lastPremium)}` : ''}. Choose 1–12 months
+          for the next cover, then confirm premium and payments.
+        </p>
       </div>
 
       <Field label="Cover length" required>
@@ -351,8 +337,13 @@ export default function RenewCoverPanel({ vehicle, onCancel, onSave, saving }) {
         </div>
       )}
 
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <button type="button" onClick={onCancel} className={BTN_SECONDARY} disabled={saving}>
+      <div className="flex justify-end gap-2 border-t border-slate-200/80 pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50"
+        >
           Cancel
         </button>
         <button
@@ -365,7 +356,7 @@ export default function RenewCoverPanel({ vehicle, onCancel, onSave, saving }) {
               toast(err.message || 'Could not renew cover.', 'error')
             }
           }}
-          className={BTN_PRIMARY}
+          className="rounded-lg bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-primary-700 disabled:opacity-50"
         >
           {saving
             ? 'Saving…'

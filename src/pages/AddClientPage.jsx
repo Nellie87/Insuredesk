@@ -19,6 +19,7 @@ import {
 import { formatNumberInput, parseNumberInput, premiumFromRate } from '../utils/numberInput'
 import { defaultExpiryDate, formatDisplayDate } from '../utils/policyDates'
 import DateInput from '../components/ui/DateInput'
+import Select from '../components/ui/Select'
 import { toast } from '../store/toastStore'
 import { INSURER_OPTIONS } from '../constants/insurers'
 import { CAR_MAKE_OPTIONS, getCarModelOptions } from '../constants/carMakes'
@@ -845,31 +846,29 @@ export default function AddClientPage() {
                 </p>
 
             <Field label="Make of car">
-              <select
+              <Select
                 value={form.make}
                 onChange={e => set('make', e.target.value)}
-                className={INPUT}
               >
                 {CAR_MAKE_OPTIONS.map(option => (
                   <option key={option.value || 'empty'} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Model">
-              <select
+              <Select
                 value={form.model}
                 onChange={e => set('model', e.target.value)}
                 disabled={!form.make || form.make === 'Other'}
-                className={INPUT}
               >
                 {modelOptions.map(option => (
                   <option key={option.value || 'empty'} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
 
             {form.make === 'Other' && (
@@ -935,17 +934,16 @@ export default function AddClientPage() {
               />
             </Field>
             <Field label="Use type">
-              <select
+              <Select
                 value={form.use_type}
                 onChange={e => set('use_type', e.target.value)}
-                className={INPUT}
               >
                 {USE_TYPES.map(type => (
                   <option key={type.value} value={type.value}>
                     {type.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Vehicle notes" className="sm:col-span-2">
               <textarea
@@ -962,30 +960,28 @@ export default function AddClientPage() {
         {step === 2 && (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-5">
             <Field label="Cover type" className="sm:col-span-2">
-              <select
+              <Select
                 value={form.policy_type}
                 onChange={e => set('policy_type', e.target.value)}
-                className={INPUT}
               >
                 {POLICY_TYPES.map(type => (
                   <option key={type.value} value={type.value}>
                     {type.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Insurer">
-              <select
+              <Select
                 value={form.insurer}
                 onChange={e => set('insurer', e.target.value)}
-                className={INPUT}
               >
                 {INSURER_OPTIONS.map(option => (
                   <option key={option.value || 'empty'} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Policy number">
               <input

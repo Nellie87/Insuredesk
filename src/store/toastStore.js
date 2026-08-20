@@ -13,7 +13,7 @@ export const useToastStore = create((set, get) => ({
 
     window.setTimeout(() => {
       get().dismissToast(id)
-    }, 3200)
+    }, 5000)
 
     return id
   },

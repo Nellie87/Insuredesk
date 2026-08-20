@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { localPut, localGet, localGetAll, addToSyncQueue } from '../lib/db'
 import { useAppStore } from '../store/appStore'
+import { mergePaymentLists, usePaymentStore } from '../store/paymentStore'
 import {
   applyPaymentToSchedule,
   getAmountPaid,
@@ -66,7 +67,9 @@ export function usePayments() {
   const { session, isOnline } = useAppStore()
   const agentId = session?.user?.id
 
-  const [payments, setPayments] = useState([])
+  const payments = usePaymentStore(state => state.payments)
+  const setPayments = usePaymentStore(state => state.setPayments)
+  const upsertPayment = usePaymentStore(state => state.upsertPayment)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -95,8 +98,12 @@ export function usePayments() {
 
         if (err) throw err
 
-        setPayments(data ?? [])
-        for (const payment of data ?? []) {
+        const local = (await localGetAll('payments')).filter(
+          payment => payment.agent_id === agentId,
+        )
+        const merged = mergePaymentLists(data ?? [], local)
+        setPayments(merged)
+        for (const payment of merged) {
           await localPut('payments', payment)
         }
       } else {
@@ -110,7 +117,7 @@ export function usePayments() {
     } finally {
       setLoading(false)
     }
-  }, [agentId, isOnline])
+  }, [agentId, isOnline, setPayments])
 
   useEffect(() => {
     fetchPayments()
@@ -203,9 +210,25 @@ export function usePayments() {
       created_at: new Date().toISOString(),
     }
 
+    const client = clientId ? await localGet('clients', clientId) : null
+    const vehicle = (client?.vehicles ?? []).find(item => item.id === vehicleId)
+    const paymentWithJoins = {
+      ...payment,
+      clients: client
+        ? { name: client.name, phone: client.phone }
+        : undefined,
+      vehicles: vehicle
+        ? {
+            registration: vehicle.registration,
+            make: vehicle.make,
+            model: vehicle.model,
+          }
+        : undefined,
+    }
+
     try {
-      await localPut('payments', payment)
-      setPayments(prev => [payment, ...prev])
+      await localPut('payments', paymentWithJoins)
+      upsertPayment(paymentWithJoins)
 
       if (isOnline) {
         const { error: err } = await supabase.from('payments').insert(payment)
@@ -242,14 +265,14 @@ export function usePayments() {
         }
       }
 
-      return payment
+      return paymentWithJoins
     } catch (err) {
       setError(err.message)
       throw err
     } finally {
       setSaving(false)
     }
-  }, [agentId, isOnline, persistScheduleUpdate, persistClientStatus])
+  }, [agentId, isOnline, persistScheduleUpdate, persistClientStatus, upsertPayment])
 
   return { payments, loading, saving, error, refetch: fetchPayments, logPayment }
 }
