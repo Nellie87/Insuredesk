@@ -134,7 +134,8 @@ export function sumPayments(payments) {
  * }}
  */
 export function getVehicleCollectionSummary(vehicle, payments = []) {
-  const schedule = getVehicleSchedules(vehicle)[0] ?? null
+  const schedules = getVehicleSchedules(vehicle)
+  const schedule = schedules[0] ?? null
   const totalPremium = round2(
     Number(
       schedule
@@ -143,14 +144,21 @@ export function getVehicleCollectionSummary(vehicle, payments = []) {
     ) || 0
   )
 
-  const related = (payments ?? []).filter(
-    payment =>
-      payment.vehicle_id === vehicle?.id ||
-      (schedule && payment.schedule_id === schedule.id)
+  const related = paymentsForSchedule(
+    schedule,
+    payments,
+    schedules,
+    vehicle?.id,
+    vehicle?.start_date,
   )
   const paymentsTotal = sumPayments(related)
   const schedulePaid = schedule ? getAmountPaid(schedule) : 0
-  const amountPaid = round2(Math.max(schedulePaid, paymentsTotal))
+  const hasLoggedReceipts = (payments ?? []).some(
+    payment => payment.vehicle_id === vehicle?.id,
+  )
+  const amountPaid = round2(
+    hasLoggedReceipts ? paymentsTotal : Math.max(schedulePaid, paymentsTotal),
+  )
   const outstanding = Math.max(0, round2(totalPremium - amountPaid))
   const overpayment =
     totalPremium > 0 ? Math.max(0, round2(amountPaid - totalPremium)) : 0
@@ -235,24 +243,54 @@ export function applyPaymentToSchedule(schedule, amount, paidAt) {
  * @param {import('../types').Payment[]} payments
  * @returns {import('../types').PaymentSchedule}
  */
-export function reconcileScheduleWithPayments(schedule, payments) {
+export function reconcileScheduleWithPayments(
+  schedule,
+  payments,
+  allSchedules,
+  currentStartDate,
+) {
   if (!schedule) return schedule
 
-  const related = (payments ?? []).filter(
-    payment =>
-      payment.schedule_id === schedule.id || payment.vehicle_id === schedule.vehicle_id
+  const related = paymentsForSchedule(
+    schedule,
+    payments,
+    allSchedules ?? [schedule],
+    schedule.vehicle_id,
+    currentStartDate,
   )
   const paymentsTotal = sumPayments(related)
   const schedulePaid = getAmountPaid(schedule)
+  const latest = [...related].sort((a, b) =>
+    String(b.date).localeCompare(String(a.date)),
+  )[0]
+  const paidAt = latest?.date || new Date().toISOString().slice(0, 10)
+
+  if (paymentsTotal + 0.01 < schedulePaid) {
+    return applyPaymentToSchedule(
+      clearScheduleCredit(schedule),
+      paymentsTotal,
+      paidAt,
+    )
+  }
+
   const gap = round2(paymentsTotal - schedulePaid)
   if (gap <= 0.01) return schedule
 
-  const latest = [...related].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0]
-  return applyPaymentToSchedule(
-    schedule,
-    gap,
-    latest?.date || new Date().toISOString().slice(0, 10)
-  )
+  return applyPaymentToSchedule(schedule, gap, paidAt)
+}
+
+function clearScheduleCredit(schedule) {
+  return {
+    ...schedule,
+    down_payment_paid: false,
+    down_payment_paid_at: null,
+    installments: (schedule.installments ?? []).map(item => ({
+      ...item,
+      paid: false,
+      paid_at: null,
+      paid_amount: null,
+    })),
+  }
 }
 
 /**
@@ -267,13 +305,83 @@ export function getNextDueInstallment(schedule) {
 
 /**
  * Normalises payment_schedules from Supabase (array) or legacy single object.
+ * Newest first so index 0 is the current cover period.
  * @param {object} vehicle
  * @returns {import('../types').PaymentSchedule[]}
  */
 export function getVehicleSchedules(vehicle) {
   const schedules = vehicle?.payment_schedules
   if (!schedules) return []
-  return Array.isArray(schedules) ? schedules : [schedules]
+  const list = Array.isArray(schedules) ? schedules : [schedules]
+  return list.slice().sort((a, b) =>
+    String(b.created_at || '').localeCompare(String(a.created_at || '')),
+  )
+}
+
+/** Current (newest) payment schedule for a vehicle. */
+export function getCurrentSchedule(vehicle) {
+  return getVehicleSchedules(vehicle)[0] ?? null
+}
+
+/**
+ * Payments that belong to one cover period.
+ * Current period: matching schedule_id, or unscoped receipts on/after the new start date.
+ * Older periods keep last year's receipts so a renewal is not marked overpaid.
+ */
+export function paymentsForSchedule(
+  schedule,
+  payments,
+  allSchedules,
+  vehicleId,
+  currentStartDate,
+) {
+  const resolvedVehicleId = vehicleId || schedule?.vehicle_id
+  const currentStart = currentStartDate
+    ? String(currentStartDate).slice(0, 10)
+    : ''
+  const paymentDate = payment =>
+    String(payment.date || payment.created_at || '').slice(0, 10)
+
+  if (!schedule) {
+    return (payments ?? []).filter(payment => {
+      if (payment.vehicle_id !== resolvedVehicleId) return false
+      if (currentStart && paymentDate(payment) < currentStart) return false
+      return true
+    })
+  }
+
+  const schedules = allSchedules?.length ? allSchedules : [schedule]
+  const newest = [...schedules].sort((a, b) =>
+    String(b.created_at || '').localeCompare(String(a.created_at || '')),
+  )[0]
+  const isCurrent = newest?.id === schedule.id
+
+  return (payments ?? []).filter(payment => {
+    if (payment.vehicle_id && payment.vehicle_id !== resolvedVehicleId) {
+      return false
+    }
+
+    if (payment.schedule_id === schedule.id) {
+      if (isCurrent && currentStart && paymentDate(payment) < currentStart) {
+        return false
+      }
+      return true
+    }
+
+    if (payment.schedule_id) return false
+    if (payment.vehicle_id !== resolvedVehicleId) return false
+
+    if (currentStart) {
+      return isCurrent
+        ? paymentDate(payment) >= currentStart
+        : paymentDate(payment) < currentStart
+    }
+
+    const oldest = [...schedules].sort((a, b) =>
+      String(a.created_at || '').localeCompare(String(b.created_at || '')),
+    )[0]
+    return oldest?.id === schedule.id
+  })
 }
 
 /**
@@ -288,14 +396,36 @@ export function hasOverduePayment(schedule) {
 }
 
 /**
- * Months between installment due dates for an annual policy.
- * 1 = single payment on start; 2 = half-yearly; 3–4 = quarterly; 5 ≈ every 2 months.
+ * Months between installment due dates.
+ * Annual (12 months) keeps the existing half-yearly / quarterly spacing.
+ * Short cover spaces payments across the chosen months.
  */
-export function installmentMonthStep(installmentCount) {
+export function installmentMonthStep(installmentCount, coverMonths = 12) {
   const count = Math.max(Math.round(Number(installmentCount) || 1), 1)
+  const months = Math.max(Math.round(Number(coverMonths) || 12), 1)
   if (count <= 1) return 0
-  const steps = { 2: 6, 3: 3, 4: 3, 5: 2 }
-  return steps[count] ?? Math.max(1, Math.round(12 / count))
+  if (months >= 12) {
+    const steps = { 2: 6, 3: 3, 4: 3, 5: 2 }
+    return steps[count] ?? Math.max(1, Math.round(12 / count))
+  }
+  return Math.max(1, Math.floor(months / count))
+}
+
+export function maxInstallmentsForCover(coverMonths = 12) {
+  return Math.min(5, Math.max(1, Math.round(Number(coverMonths) || 12)))
+}
+
+export function defaultInstallmentCountForCover(coverMonths = 12) {
+  const months = Math.max(1, Math.round(Number(coverMonths) || 12))
+  if (months <= 2) return 1
+  if (months <= 6) return Math.min(2, months)
+  return 3
+}
+
+export function proratePremium(premium, fromMonths, toMonths) {
+  const from = Math.max(1, Number(fromMonths) || 12)
+  const to = Math.max(1, Number(toMonths) || 12)
+  return round2(((Number(premium) || 0) * to) / from)
 }
 
 /** Equal rate split that always sums to 100 (last installment takes the remainder). */
@@ -371,6 +501,7 @@ function parseAmountValue(value) {
  *   rates?: number[],
  *   overrides?: Array<{ amount?: number|string|null, due_date?: string|null, rate?: number|string|null, paid?: boolean, paid_at?: string|null, paid_amount?: number|null }>,
  *   maxInstallments?: number,
+ *   coverMonths?: number,
  * }} input
  * @returns {Omit<import('../types').PaymentSchedule, 'id'|'vehicle_id'|'created_at'> | null}
  */
@@ -381,18 +512,21 @@ export function buildInstallmentSchedule({
   rates,
   overrides = [],
   maxInstallments = 5,
+  coverMonths = 12,
 }) {
   const totalPremium = Number(premium)
   if (!startDate || !Number.isFinite(totalPremium) || totalPremium <= 0) return null
 
+  const months = Math.max(Math.round(Number(coverMonths) || 12), 1)
   const count = Math.min(
     Math.max(Math.round(Number(installmentCount) || 1), 1),
     maxInstallments,
+    months,
   )
   const baseDate = new Date(`${startDate}T12:00:00`)
   if (Number.isNaN(baseDate.getTime())) return null
 
-  const monthStep = installmentMonthStep(count)
+  const monthStep = installmentMonthStep(count, months)
   const resolvedRates =
     Array.isArray(rates) && rates.length === count
       ? rates.map(rate => Number(rate) || 0)

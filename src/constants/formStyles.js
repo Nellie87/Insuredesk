@@ -3,6 +3,9 @@
 export const INPUT =
   'w-full rounded-xl border border-stone-200 bg-white px-3.5 py-3 text-ink placeholder:text-ink-faint transition focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20'
 
+export const SELECT =
+  `${INPUT} cursor-pointer appearance-none bg-none pr-11 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-ink-faint`
+
 export const INPUT_SPACED = `mt-1.5 ${INPUT}`
 
 export const LABEL =
@@ -23,4 +26,4 @@ export const BTN_SECONDARY =
 export const PANEL =
   'rounded-2xl border border-stone-200/80 bg-white p-5 shadow-card sm:p-6'
 
-export const REQUIRED_MARK = 'ml-0.5 text-primary-500'
+export const REQUIRED_MARK = 'ml-0.5 text-red-600'

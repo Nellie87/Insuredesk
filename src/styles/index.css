@@ -43,6 +43,22 @@
     font-size: 16px; /* prevents iOS zoom on focus */
   }
 
+  select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none;
+  }
+
+  select::-ms-expand {
+    display: none;
+  }
+
+  select option {
+    color: theme('colors.ink.DEFAULT');
+    background-color: #fff;
+  }
+
   /* Prevent mouse-wheel from changing focused number / range values */
   input[type='number'],
   input[type='range'] {

@@ -32,6 +32,33 @@ export function toNumberOrNull(value) {
   return Number.isFinite(n) ? n : null
 }
 
+/** Parses engine capacity in cc from a number or strings like "1500" / "1500cc". */
+export function parseEngineCapacity(value) {
+  if (value == null || value === '') return null
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return null
+    const n = Math.round(value)
+    return n > 0 ? n : null
+  }
+  const digits = String(value).replace(/\D/g, '')
+  if (!digits) return null
+  const n = Number(digits)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** Formats engine capacity for display, e.g. 1500 → "1,500 cc". */
+export function formatEngineCapacity(value) {
+  const n = parseEngineCapacity(value)
+  if (n == null) return ''
+  return `${n.toLocaleString('en-KE')} cc`
+}
+
+/** Digit string for engine capacity inputs. */
+export function engineCapacityInputValue(value) {
+  const n = parseEngineCapacity(value)
+  return n != null ? String(n) : ''
+}
+
 /**
  * Calculates total premium from sum insured and a rate percent.
  * Returns a formatted amount string, or null when inputs are incomplete.

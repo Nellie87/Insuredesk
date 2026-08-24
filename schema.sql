@@ -48,7 +48,7 @@ create table vehicles (
   make             text not null,
   model            text not null,
   year             int,
-  engine_capacity  text,
+  engine_capacity  int,
   vehicle_value    numeric(12,2) default 0,
   vehicle_notes    text,
   cover_notes      text,
@@ -61,6 +61,9 @@ create table vehicles (
                      check (policy_type in ('comprehensive','third_party','third_party_fire_theft')),
   start_date       date not null,
   expiry_date      date not null,
+  cover_months     int not null default 12
+                     check (cover_months >= 1 and cover_months <= 12),
+  cover_history    jsonb not null default '[]'::jsonb,
   sum_insured      numeric(12,2) default 0,
   premium          numeric(12,2) not null,
   created_at       timestamptz default now()

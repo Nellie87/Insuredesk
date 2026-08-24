@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { signIn, signUp } from '../lib/supabase'
 import { useAppStore } from '../store/appStore'
-import { INPUT, LABEL, BTN_PRIMARY } from '../constants/formStyles'
+import { INPUT, LABEL, BTN_PRIMARY, REQUIRED_MARK } from '../constants/formStyles'
 
 export default function LoginPage() {
   const { session, authLoading } = useAppStore()
@@ -154,7 +154,7 @@ export default function LoginPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className={LABEL}>
-                    Full name <span className="text-primary-500">*</span>
+                    Full name <span className={REQUIRED_MARK}>*</span>
                   </label>
                   <input
                     type="text"
@@ -167,7 +167,7 @@ export default function LoginPage() {
                 </div>
                 <div>
                   <label className={LABEL}>
-                    Phone <span className="text-primary-500">*</span>
+                    Phone <span className={REQUIRED_MARK}>*</span>
                   </label>
                   <input
                     type="tel"
@@ -183,7 +183,7 @@ export default function LoginPage() {
 
             <div>
               <label className={LABEL}>
-                Email <span className="text-primary-500">*</span>
+                Email <span className={REQUIRED_MARK}>*</span>
               </label>
               <input
                 type="email"
@@ -197,7 +197,7 @@ export default function LoginPage() {
 
             <div>
               <label className={LABEL}>
-                Password <span className="text-primary-500">*</span>
+                Password <span className={REQUIRED_MARK}>*</span>
               </label>
               <input
                 type="password"

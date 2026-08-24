@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import { buildPaymentScheduleFromPlan } from './calculator'
+import { parseEngineCapacity } from './numberInput'
 
 const COLUMN_ALIASES = {
   name: ['insured', 'name', 'full name', 'client name', 'client', 'customer name', 'customer'],
@@ -282,7 +283,7 @@ function parseRow(row, headerMap, rowNumber) {
         make,
         model,
         year: get('year') ? String(get('year')).trim() : '',
-        engine_capacity: String(get('engine_capacity') ?? '').trim(),
+        engine_capacity: parseEngineCapacity(get('engine_capacity')),
         vehicle_value: get('vehicle_value') ?? '',
         use_type: useType || 'private',
         insurer,
@@ -290,6 +291,7 @@ function parseRow(row, headerMap, rowNumber) {
         policy_type: policyType || 'comprehensive',
         start_date: inferredStartDate,
         expiry_date: expiryDate,
+        cover_months: 12,
         sum_insured: get('sum_insured') ?? '',
         premium,
       },

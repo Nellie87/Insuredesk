@@ -16,9 +16,10 @@ import {
   presetInstallmentRates,
   rateFromAmount,
 } from '../utils/calculator'
-import { formatNumberInput, parseNumberInput, premiumFromRate } from '../utils/numberInput'
+import { engineCapacityInputValue, formatEngineCapacity, formatNumberInput, parseEngineCapacity, parseNumberInput, premiumFromRate } from '../utils/numberInput'
 import { defaultExpiryDate, formatDisplayDate } from '../utils/policyDates'
 import DateInput from '../components/ui/DateInput'
+import Select from '../components/ui/Select'
 import { toast } from '../store/toastStore'
 import { INSURER_OPTIONS } from '../constants/insurers'
 import { CAR_MAKE_OPTIONS, getCarModelOptions } from '../constants/carMakes'
@@ -26,6 +27,7 @@ import {
   INPUT,
   BTN_PRIMARY,
   BTN_SECONDARY,
+  REQUIRED_MARK,
 } from '../constants/formStyles'
 
 const POLICY_TYPES = [
@@ -92,7 +94,7 @@ function Field({ label, required, hint, children, className = '' }) {
     <div className={className}>
       <label className="text-sm font-medium text-slate-600">
         {label}
-        {required && <span className="text-slate-400">*</span>}
+        {required && <span className={REQUIRED_MARK}>*</span>}
       </label>
       {hint && <p className="mt-0.5 text-sm text-slate-400">{hint}</p>}
       <div className="mt-1.5">{children}</div>
@@ -249,6 +251,7 @@ export default function AddClientPage() {
         setForm({
           ...INITIAL_FORM,
           ...existing.form,
+          engine_capacity: engineCapacityInputValue(existing.form.engine_capacity),
           installment_overrides: Array.isArray(existing.form.installment_overrides)
             ? existing.form.installment_overrides
             : [],
@@ -665,7 +668,7 @@ export default function AddClientPage() {
           make: resolvedMake,
           model: resolvedModel,
           year: form.year,
-          engine_capacity: form.engine_capacity,
+          engine_capacity: parseEngineCapacity(form.engine_capacity),
           vehicle_value: parseNumberInput(form.vehicle_value),
           use_type: form.use_type,
           insurer: resolvedInsurer,
@@ -673,6 +676,7 @@ export default function AddClientPage() {
           policy_type: form.policy_type,
           start_date: form.start_date,
           expiry_date: form.expiry_date,
+          cover_months: 12,
           sum_insured: parseNumberInput(form.vehicle_value),
           premium: parseNumberInput(form.premium),
           vehicle_notes: form.vehicle_notes,
@@ -840,35 +844,33 @@ export default function AddClientPage() {
                 </Field>
                 <p className="sm:col-span-2 text-sm text-slate-500">
                   At least one of registration or chassis is required
-                  <span className="text-slate-400">*</span>
+                  <span className={REQUIRED_MARK}>*</span>
                 </p>
 
             <Field label="Make of car">
-              <select
+              <Select
                 value={form.make}
                 onChange={e => set('make', e.target.value)}
-                className={INPUT}
               >
                 {CAR_MAKE_OPTIONS.map(option => (
                   <option key={option.value || 'empty'} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Model">
-              <select
+              <Select
                 value={form.model}
                 onChange={e => set('model', e.target.value)}
                 disabled={!form.make || form.make === 'Other'}
-                className={INPUT}
               >
                 {modelOptions.map(option => (
                   <option key={option.value || 'empty'} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
 
             {form.make === 'Other' && (
@@ -915,11 +917,15 @@ export default function AddClientPage() {
                 className={INPUT}
               />
             </Field>
-            <Field label="Engine">
+            <Field label="Engine (cc)">
               <input
-                placeholder="1500cc"
+                type="text"
+                inputMode="numeric"
+                placeholder="1500"
                 value={form.engine_capacity}
-                onChange={e => set('engine_capacity', e.target.value)}
+                onChange={e =>
+                  set('engine_capacity', e.target.value.replace(/\D/g, '').slice(0, 5))
+                }
                 className={INPUT}
               />
             </Field>
@@ -934,17 +940,16 @@ export default function AddClientPage() {
               />
             </Field>
             <Field label="Use type">
-              <select
+              <Select
                 value={form.use_type}
                 onChange={e => set('use_type', e.target.value)}
-                className={INPUT}
               >
                 {USE_TYPES.map(type => (
                   <option key={type.value} value={type.value}>
                     {type.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Vehicle notes" className="sm:col-span-2">
               <textarea
@@ -961,30 +966,28 @@ export default function AddClientPage() {
         {step === 2 && (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-5">
             <Field label="Cover type" className="sm:col-span-2">
-              <select
+              <Select
                 value={form.policy_type}
                 onChange={e => set('policy_type', e.target.value)}
-                className={INPUT}
               >
                 {POLICY_TYPES.map(type => (
                   <option key={type.value} value={type.value}>
                     {type.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Insurer">
-              <select
+              <Select
                 value={form.insurer}
                 onChange={e => set('insurer', e.target.value)}
-                className={INPUT}
               >
                 {INSURER_OPTIONS.map(option => (
                   <option key={option.value || 'empty'} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Policy number">
               <input
@@ -1345,6 +1348,10 @@ export default function AddClientPage() {
                   value={`${resolvedMake} ${resolvedModel}`}
                 />
                 <ReviewFact label="Year" value={form.year} />
+                <ReviewFact
+                  label="Engine"
+                  value={formatEngineCapacity(form.engine_capacity)}
+                />
                 <ReviewFact
                   label="Vehicle value(Kshs)"
                   value={

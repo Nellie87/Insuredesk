@@ -14,7 +14,7 @@ export default function Toaster() {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 z-[100] w-full max-w-sm -translate-x-1/2 space-y-2 px-4 lg:bottom-auto lg:left-auto lg:right-6 lg:top-4 lg:translate-x-0"
+      className="pointer-events-none fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-1/2 z-[200] w-full max-w-sm -translate-x-1/2 space-y-2 px-4 lg:bottom-auto lg:left-auto lg:right-6 lg:top-5 lg:translate-x-0"
       aria-live="polite"
     >
       {toasts.map(item => (

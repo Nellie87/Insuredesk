@@ -6,6 +6,7 @@ import { toast } from '../store/toastStore'
 import { INSURER_OPTIONS } from '../constants/insurers'
 import PageShell from '../components/layout/PageShell'
 import PageHeader from '../components/layout/PageHeader'
+import Select from '../components/ui/Select'
 import { INPUT, LABEL } from '../constants/formStyles'
 
 const STAGES = [
@@ -259,17 +260,16 @@ export default function ProspectsPage() {
               />
             </div>
 
-            <select
+            <Select
               value={form.preferred_insurer}
               onChange={e => set('preferred_insurer', e.target.value)}
-              className={INPUT}
             >
               {INSURER_OPTIONS.map(option => (
                 <option key={option.value || 'empty'} value={option.value}>
                   {option.value ? option.label : 'Preferred insurer (optional)'}
                 </option>
               ))}
-            </select>
+            </Select>
 
             <div>
               <label className={LABEL}>Follow-up date</label>
@@ -374,7 +374,7 @@ export default function ProspectsPage() {
                 </div>
               )}
 
-              <select
+              <Select
                 value={prospect.stage}
                 onChange={async e => {
                   try {
@@ -384,14 +384,14 @@ export default function ProspectsPage() {
                     toast(err.message || 'Could not update stage.', 'error')
                   }
                 }}
-                className={`mt-3 ${INPUT}`}
+                className="mt-3"
               >
                 {STAGES.map(stage => (
                   <option key={stage.value} value={stage.value}>
                     {stage.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           ))}
         </div>
