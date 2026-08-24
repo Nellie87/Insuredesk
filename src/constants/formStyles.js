@@ -26,4 +26,4 @@ export const BTN_SECONDARY =
 export const PANEL =
   'rounded-2xl border border-stone-200/80 bg-white p-5 shadow-card sm:p-6'
 
-export const REQUIRED_MARK = 'ml-0.5 text-primary-500'
+export const REQUIRED_MARK = 'ml-0.5 text-red-600'

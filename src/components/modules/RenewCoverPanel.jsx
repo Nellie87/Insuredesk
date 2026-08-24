@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import DateInput from '../ui/DateInput'
-import { INPUT, LABEL } from '../../constants/formStyles'
+import { INPUT, LABEL, REQUIRED_MARK } from '../../constants/formStyles'
 import {
   buildInstallmentSchedule,
   defaultInstallmentCountForCover,
@@ -25,7 +25,7 @@ function Field({ label, required, hint, children, className = '' }) {
     <div className={className}>
       <label className={LABEL}>
         {label}
-        {required && <span className="ml-0.5 text-red-500">*</span>}
+        {required && <span className={REQUIRED_MARK}>*</span>}
       </label>
       {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
       <div className="mt-1.5">{children}</div>

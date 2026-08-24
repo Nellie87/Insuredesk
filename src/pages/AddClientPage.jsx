@@ -16,7 +16,7 @@ import {
   presetInstallmentRates,
   rateFromAmount,
 } from '../utils/calculator'
-import { formatNumberInput, parseNumberInput, premiumFromRate } from '../utils/numberInput'
+import { engineCapacityInputValue, formatEngineCapacity, formatNumberInput, parseEngineCapacity, parseNumberInput, premiumFromRate } from '../utils/numberInput'
 import { defaultExpiryDate, formatDisplayDate } from '../utils/policyDates'
 import DateInput from '../components/ui/DateInput'
 import Select from '../components/ui/Select'
@@ -27,6 +27,7 @@ import {
   INPUT,
   BTN_PRIMARY,
   BTN_SECONDARY,
+  REQUIRED_MARK,
 } from '../constants/formStyles'
 
 const POLICY_TYPES = [
@@ -93,7 +94,7 @@ function Field({ label, required, hint, children, className = '' }) {
     <div className={className}>
       <label className="text-sm font-medium text-slate-600">
         {label}
-        {required && <span className="text-slate-400">*</span>}
+        {required && <span className={REQUIRED_MARK}>*</span>}
       </label>
       {hint && <p className="mt-0.5 text-sm text-slate-400">{hint}</p>}
       <div className="mt-1.5">{children}</div>
@@ -250,6 +251,7 @@ export default function AddClientPage() {
         setForm({
           ...INITIAL_FORM,
           ...existing.form,
+          engine_capacity: engineCapacityInputValue(existing.form.engine_capacity),
           installment_overrides: Array.isArray(existing.form.installment_overrides)
             ? existing.form.installment_overrides
             : [],
@@ -666,7 +668,7 @@ export default function AddClientPage() {
           make: resolvedMake,
           model: resolvedModel,
           year: form.year,
-          engine_capacity: form.engine_capacity,
+          engine_capacity: parseEngineCapacity(form.engine_capacity),
           vehicle_value: parseNumberInput(form.vehicle_value),
           use_type: form.use_type,
           insurer: resolvedInsurer,
@@ -842,7 +844,7 @@ export default function AddClientPage() {
                 </Field>
                 <p className="sm:col-span-2 text-sm text-slate-500">
                   At least one of registration or chassis is required
-                  <span className="text-slate-400">*</span>
+                  <span className={REQUIRED_MARK}>*</span>
                 </p>
 
             <Field label="Make of car">
@@ -915,11 +917,15 @@ export default function AddClientPage() {
                 className={INPUT}
               />
             </Field>
-            <Field label="Engine">
+            <Field label="Engine (cc)">
               <input
-                placeholder="1500cc"
+                type="text"
+                inputMode="numeric"
+                placeholder="1500"
                 value={form.engine_capacity}
-                onChange={e => set('engine_capacity', e.target.value)}
+                onChange={e =>
+                  set('engine_capacity', e.target.value.replace(/\D/g, '').slice(0, 5))
+                }
                 className={INPUT}
               />
             </Field>
@@ -1342,6 +1348,10 @@ export default function AddClientPage() {
                   value={`${resolvedMake} ${resolvedModel}`}
                 />
                 <ReviewFact label="Year" value={form.year} />
+                <ReviewFact
+                  label="Engine"
+                  value={formatEngineCapacity(form.engine_capacity)}
+                />
                 <ReviewFact
                   label="Vehicle value(Kshs)"
                   value={

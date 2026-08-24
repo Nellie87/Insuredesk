@@ -78,10 +78,10 @@ BEGIN
     policy_type, start_date, expiry_date, sum_insured, premium, created_at
   )
   VALUES
-    (v1, c1, agent, 'KDA 123A', 'Toyota',  'Axio',    2016, '1500cc', 850000,  'private',    'APA',    'APA-2025-88421', 'comprehensive',           '2025-09-01', '2026-09-01', 850000,  48500, '2025-09-01'),
-    (v2, c2, agent, 'KCB 456B', 'Subaru',  'Impreza', 2014, '2000cc', 1200000, 'private',    'Britam', 'BR-2025-11203',  'comprehensive',           '2025-06-15', '2026-06-15', 1200000, 62000, '2025-06-15'),
-    (v3, c3, agent, 'KDG 789C', 'Nissan',  'Note',    2018, '1200cc', 720000,  'private',    'CIC',    'CIC-2024-55091', 'third_party_fire_theft',  '2025-04-10', '2026-04-10', 720000,  28000, '2025-04-10'),
-    (v4, c4, agent, 'KDJ 321D', 'Mazda',   'Demio',   2015, '1300cc', 680000,  'commercial', 'Jubilee','JUB-2025-00987', 'third_party',             '2025-01-20', '2026-01-20', 680000,  18500, '2025-01-20')
+    (v1, c1, agent, 'KDA 123A', 'Toyota',  'Axio',    2016, 1500, 850000,  'private',    'APA',    'APA-2025-88421', 'comprehensive',           '2025-09-01', '2026-09-01', 850000,  48500, '2025-09-01'),
+    (v2, c2, agent, 'KCB 456B', 'Subaru',  'Impreza', 2014, 2000, 1200000, 'private',    'Britam', 'BR-2025-11203',  'comprehensive',           '2025-06-15', '2026-06-15', 1200000, 62000, '2025-06-15'),
+    (v3, c3, agent, 'KDG 789C', 'Nissan',  'Note',    2018, 1200, 720000,  'private',    'CIC',    'CIC-2024-55091', 'third_party_fire_theft',  '2025-04-10', '2026-04-10', 720000,  28000, '2025-04-10'),
+    (v4, c4, agent, 'KDJ 321D', 'Mazda',   'Demio',   2015, 1300, 680000,  'commercial', 'Jubilee','JUB-2025-00987', 'third_party',             '2025-01-20', '2026-01-20', 680000,  18500, '2025-01-20')
   ON CONFLICT (id) DO NOTHING;
 
   -- ─── Payment schedule (James - instalment plan) ───────────────────────────

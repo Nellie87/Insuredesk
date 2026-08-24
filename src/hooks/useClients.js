@@ -8,6 +8,7 @@ import {
   reconcileScheduleWithPayments,
 } from '../utils/calculator'
 import { isCoverExpired, todayIso } from '../utils/policyDates'
+import { parseEngineCapacity } from '../utils/numberInput'
 
 function asCoverHistory(value) {
   if (Array.isArray(value)) return value
@@ -293,7 +294,7 @@ export function useClients() {
       make: vehicle.make.trim(),
       model: vehicle.model.trim(),
       year: vehicle.year ? Number(vehicle.year) : null,
-      engine_capacity: vehicle.engine_capacity?.trim() || null,
+      engine_capacity: parseEngineCapacity(vehicle.engine_capacity),
       vehicle_value: Number(vehicle.vehicle_value || 0),
       use_type: vehicle.use_type || 'private',
       insurer: vehicle.insurer.trim(),

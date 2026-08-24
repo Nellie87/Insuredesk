@@ -62,7 +62,7 @@ export interface Vehicle {
   make: string
   model: string
   year: number
-  engine_capacity?: string
+  engine_capacity?: number | null
   vehicle_value: number
   use_type: VehicleUse
   insurer: string

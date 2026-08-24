@@ -14,7 +14,7 @@ import {
   presetInstallmentRates,
   rateFromAmount,
 } from '../utils/calculator'
-import { formatNumberInput, parseNumberInput, premiumFromRate } from '../utils/numberInput'
+import { engineCapacityInputValue, formatEngineCapacity, formatNumberInput, parseEngineCapacity, parseNumberInput, premiumFromRate } from '../utils/numberInput'
 import { buildClientActivity, getPreviousPolicies } from '../utils/activity'
 import {
   coverMonthsLabel,
@@ -32,6 +32,7 @@ import {
   LABEL,
   BTN_PRIMARY,
   BTN_SECONDARY,
+  REQUIRED_MARK,
 } from '../constants/formStyles'
 import StatusBadge from '../components/ui/StatusBadge'
 import LottieLoader from '../components/ui/LottieLoader'
@@ -222,7 +223,7 @@ function Field({ label, required, hint, children, className = '' }) {
     <div className={className}>
       <label className={LABEL}>
         {label}
-        {required && <span className="ml-0.5 text-red-500">*</span>}
+        {required && <span className={REQUIRED_MARK}>*</span>}
       </label>
       {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
       <div className="mt-1.5">{children}</div>
@@ -475,6 +476,7 @@ function TopPolicyOverviewCard({ vehicles, onRenew }) {
   const expired = isCoverExpired(activeVehicle?.expiry_date)
   const expiringSoon = isCoverExpiringSoon(activeVehicle?.expiry_date)
   const showRenew = Boolean(onRenew && activeVehicle && (expired || expiringSoon))
+  const engineLabel = formatEngineCapacity(activeVehicle?.engine_capacity)
 
   if (!activeVehicle) {
     return (
@@ -589,6 +591,10 @@ function TopPolicyOverviewCard({ vehicles, onRenew }) {
               value={coverMonthsLabel(getCoverMonths(activeVehicle))}
             />
             <DetailItem label="Usage" value={USE_LABELS[activeVehicle.use_type] ?? activeVehicle.use_type} />
+            <DetailItem
+              label="Engine"
+              value={engineLabel}
+            />
           </dl>
         )}
       </div>
@@ -624,6 +630,7 @@ function TopPolicyOverviewCard({ vehicles, onRenew }) {
       <div className="mt-4 border-t border-slate-100 pt-3 flex items-center justify-between text-xs text-slate-500">
         <span className="font-medium text-slate-600">
           {activeVehicle.year ? `${activeVehicle.year} ` : ''}{activeVehicle.make} {activeVehicle.model}
+          {engineLabel ? ` · ${engineLabel}` : ''}
         </span>
         <a href="#vehicles-section" className="font-semibold text-primary-600 hover:text-primary-700">
           Payment schedule ↓
@@ -700,7 +707,7 @@ function VehicleCard({
       make: vehicle.make || '',
       model: vehicle.model || '',
       year: vehicle.year ?? '',
-      engine_capacity: vehicle.engine_capacity || '',
+      engine_capacity: engineCapacityInputValue(vehicle.engine_capacity),
       vehicle_value: formatNumberInput(String(vehicle.vehicle_value || '')),
       use_type: vehicle.use_type || 'private',
     })
@@ -895,7 +902,7 @@ function VehicleCard({
         make: vehicleForm.make.trim() || 'Unknown',
         model: vehicleForm.model.trim() || 'Unknown',
         year: vehicleForm.year ? Number(vehicleForm.year) : null,
-        engine_capacity: vehicleForm.engine_capacity.trim() || null,
+        engine_capacity: parseEngineCapacity(vehicleForm.engine_capacity),
         vehicle_value: Number(parseNumberInput(vehicleForm.vehicle_value) || 0),
         sum_insured: Number(parseNumberInput(vehicleForm.vehicle_value) || 0),
         use_type: vehicleForm.use_type,
@@ -1212,10 +1219,17 @@ function VehicleCard({
                     className={INPUT}
                   />
                 </Field>
-                <Field label="Engine Capacity">
+                <Field label="Engine (cc)">
                   <input
+                    type="text"
+                    inputMode="numeric"
                     value={vehicleForm.engine_capacity}
-                    onChange={e => setVehicleForm(prev => ({ ...prev, engine_capacity: e.target.value }))}
+                    onChange={e =>
+                      setVehicleForm(prev => ({
+                        ...prev,
+                        engine_capacity: e.target.value.replace(/\D/g, '').slice(0, 5),
+                      }))
+                    }
                     className={INPUT}
                   />
                 </Field>

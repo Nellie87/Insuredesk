@@ -48,7 +48,7 @@ create table vehicles (
   make             text not null,
   model            text not null,
   year             int,
-  engine_capacity  text,
+  engine_capacity  int,
   vehicle_value    numeric(12,2) default 0,
   vehicle_notes    text,
   cover_notes      text,
