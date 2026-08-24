@@ -43,7 +43,7 @@ const USE_TYPES = [
 ]
 
 const STEPS = [
-  { id: 'insured', title: 'Insured', caption: 'Enter the insured person’s details. You can add vehicle and cover information in the next steps.' },
+  { id: 'insured', title: 'Insured', caption: 'Enter the insured person’s details. Next you will add a vehicle and its own insurance package. You can add more vehicles after saving.' },
   { id: 'vehicle', title: 'Vehicle', caption: 'Identify the vehicle with registration or chassis, then add make, model, and use.' },
   { id: 'cover', title: 'Cover', caption: 'Set the insurer, policy type, and total premium. Sum insured comes from the vehicle value.' },
   { id: 'dates', title: 'Dates', caption: 'Confirm the policy start and expiry dates for this cover period.' },
@@ -620,7 +620,7 @@ export default function AddClientPage() {
     }
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (addAnother = false) => {
     const message =
       validateStep(0) ||
       validateStep(1) ||
@@ -653,7 +653,7 @@ export default function AddClientPage() {
     setError(null)
 
     try {
-      await addClientWithVehicle({
+      const saved = await addClientWithVehicle({
         client: {
           name: form.name,
           phone: form.phone,
@@ -691,8 +691,15 @@ export default function AddClientPage() {
       } catch (err) {
         console.warn('[Client session] could not clear draft:', err.message)
       }
-      toast('Client saved successfully.')
-      navigate('/clients', { replace: true })
+      toast(
+        addAnother
+          ? 'Client saved. Add the next vehicle.'
+          : 'Client saved successfully.',
+      )
+      navigate(
+        addAnother ? `/vehicles/add?clientId=${saved.id}` : `/clients/${saved.id}`,
+        { replace: true },
+      )
     } catch (err) {
       const failMessage = err.message || 'Could not save client. Try again.'
       setError(failMessage)
@@ -1485,14 +1492,24 @@ export default function AddClientPage() {
               Continue
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={saving || savingSession}
-              className={`${BTN_PRIMARY} sm:min-w-[9rem]`}
-            >
-              {saving ? 'Saving…' : 'Confirm & save'}
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => handleSubmit(true)}
+                disabled={saving || savingSession}
+                className={BTN_SECONDARY}
+              >
+                {saving ? 'Saving…' : 'Save and add another vehicle'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubmit(false)}
+                disabled={saving || savingSession}
+                className={`${BTN_PRIMARY} sm:min-w-[9rem]`}
+              >
+                {saving ? 'Saving…' : 'Confirm & save'}
+              </button>
+            </div>
           )}
         </div>
       </div>

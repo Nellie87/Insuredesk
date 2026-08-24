@@ -9,10 +9,8 @@ import {
 } from '../lib/clientSessions'
 import {
   formatKSh,
-  getVehicleSchedules,
-  getOutstandingBalance,
-  getAmountPaid,
 } from '../utils/calculator'
+import { clientPortfolioTotals } from '../utils/vehiclePortfolio'
 import SearchField from '../components/ui/SearchField'
 import StatusBadge from '../components/ui/StatusBadge'
 import LottieLoader from '../components/ui/LottieLoader'
@@ -49,7 +47,16 @@ export default function ClientsPage() {
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.phone.includes(search) ||
         c.vehicles?.some(v =>
-          v.registration.toLowerCase().includes(search.toLowerCase()),
+          [
+            v.registration,
+            v.make,
+            v.model,
+            v.policy_number,
+            v.insurer,
+          ]
+            .join(' ')
+            .toLowerCase()
+            .includes(search.toLowerCase()),
         )
 
       const matchesFilter = filter === 'all' || c.status === filter
@@ -64,6 +71,12 @@ export default function ClientsPage() {
         description="Search and manage insured clients and policies."
         actions={
           <>
+            <Link
+              to="/vehicles"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-soft transition hover:border-primary-200 hover:bg-primary-50 sm:flex-none"
+            >
+              Vehicles
+            </Link>
             <Link
               to="/clients/import"
               className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-soft transition hover:border-primary-200 hover:bg-primary-50 sm:flex-none"
@@ -180,12 +193,10 @@ export default function ClientsPage() {
           {/* Mobile card list */}
           <div className="space-y-2.5 lg:hidden">
             {filtered.map(client => {
-              const vehicle = client.vehicles?.[0]
-              const schedule = vehicle ? getVehicleSchedules(vehicle)[0] : null
-              const outstanding = schedule
-                ? getOutstandingBalance(schedule)
-                : null
-              const amountPaid = schedule ? getAmountPaid(schedule) : null
+              const { vehicles, premium, paid, outstanding } =
+                clientPortfolioTotals(client)
+              const vehicle = vehicles[0]
+              const extraCount = Math.max(0, vehicles.length - 1)
               return (
                 <Link
                   key={client.id}
@@ -205,34 +216,24 @@ export default function ClientsPage() {
                       {vehicle && (
                         <div className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-400">
                           Plate {vehicle.registration}
+                          {extraCount > 0
+                            ? ` · +${extraCount} more`
+                            : ''}
                         </div>
                       )}
                     </div>
                     <div className="shrink-0 text-right">
-                      {vehicle && !schedule && (
-                        <div className="break-words text-sm font-bold text-primary-800">
-                          {formatKSh(vehicle.premium)}
-                        </div>
-                      )}
-                      <div
-                        className={
-                          vehicle && !schedule
-                            ? 'mt-1 flex justify-end'
-                            : 'flex justify-end'
-                        }
-                      >
-                        <StatusBadge status={client.status} />
-                      </div>
+                      <StatusBadge status={client.status} />
                     </div>
                   </div>
-                  {schedule && (
+                  {vehicles.length > 0 && (
                     <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
                       <div className="min-w-0">
                         <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                           To pay
                         </div>
                         <div className="mt-0.5 break-words text-sm font-semibold text-slate-900">
-                          {formatKSh(schedule.total_premium ?? vehicle.premium)}
+                          {formatKSh(premium)}
                         </div>
                       </div>
                       <div className="min-w-0">
@@ -240,7 +241,7 @@ export default function ClientsPage() {
                           Paid
                         </div>
                         <div className="mt-0.5 break-words text-sm font-semibold text-success-700">
-                          {formatKSh(amountPaid)}
+                          {formatKSh(paid)}
                         </div>
                       </div>
                       <div className="min-w-0 text-right">
@@ -273,14 +274,10 @@ export default function ClientsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map(client => {
-                  const vehicle = client.vehicles?.[0]
-                  const schedule = vehicle
-                    ? getVehicleSchedules(vehicle)[0]
-                    : null
-                  const outstanding = schedule
-                    ? getOutstandingBalance(schedule)
-                    : null
-                  const amountPaid = schedule ? getAmountPaid(schedule) : null
+                  const { vehicles, premium, paid, outstanding } =
+                    clientPortfolioTotals(client)
+                  const vehicle = vehicles[0]
+                  const extraCount = Math.max(0, vehicles.length - 1)
                   return (
                     <tr
                       key={client.id}
@@ -306,6 +303,7 @@ export default function ClientsPage() {
                             </div>
                             <div className="mt-0.5 text-xs font-medium uppercase tracking-wide text-slate-400">
                               {vehicle.registration}
+                              {extraCount > 0 ? ` · +${extraCount} more` : ''}
                             </div>
                           </>
                         ) : (
@@ -316,15 +314,13 @@ export default function ClientsPage() {
                         <StatusBadge status={client.status} />
                       </td>
                       <td className="px-5 py-3.5 text-right font-semibold text-slate-900">
-                        {formatKSh(
-                          schedule?.total_premium ?? vehicle?.premium ?? 0,
-                        )}
+                        {formatKSh(premium)}
                       </td>
                       <td className="px-5 py-3.5 text-right font-semibold text-success-700">
-                        {schedule ? formatKSh(amountPaid) : '-'}
+                        {vehicles.length ? formatKSh(paid) : '-'}
                       </td>
                       <td className="px-5 py-3.5 text-right font-semibold text-amber-700">
-                        {schedule ? formatKSh(outstanding) : '-'}
+                        {vehicles.length ? formatKSh(outstanding) : '-'}
                       </td>
                     </tr>
                   )

@@ -7,6 +7,7 @@ import {
   PaymentsIcon,
   CalendarIcon,
   ProspectsIcon,
+  VehiclesIcon,
   CalculatorIcon,
   CommissionsIcon,
   SettingsIcon,
@@ -24,6 +25,12 @@ const PRIMARY_NAV = [
 ]
 
 const MORE_NAV = [
+  {
+    to: '/vehicles',
+    label: 'Vehicles',
+    hint: 'Fleet, policies, reports',
+    icon: VehiclesIcon,
+  },
   {
     to: '/prospects',
     label: 'Prospects',
@@ -55,6 +62,8 @@ const PAGE_META = {
   '/clients': { title: 'Clients' },
   '/clients/add': { title: 'Add client', backTo: '/clients' },
   '/clients/import': { title: 'Import clients', backTo: '/clients' },
+  '/vehicles': { title: 'Vehicles' },
+  '/vehicles/add': { title: 'Add vehicle', backTo: '/vehicles' },
   '/payments': { title: 'Payments' },
   '/reminders': { title: 'Calendar' },
   '/prospects': { title: 'Prospects' },
@@ -74,8 +83,16 @@ function getInitials(name = '') {
   )
 }
 
-function getPageMeta(pathname) {
+function getPageMeta(pathname, search = '') {
+  if (pathname === '/vehicles/add') {
+    const clientId = new URLSearchParams(search).get('clientId')
+    if (clientId) return { title: 'Add vehicle', backTo: `/clients/${clientId}` }
+    return { title: 'Add vehicle', backTo: '/vehicles' }
+  }
   if (PAGE_META[pathname]) return PAGE_META[pathname]
+  if (pathname.startsWith('/vehicles/')) {
+    return { title: 'Add vehicle', backTo: '/vehicles' }
+  }
   if (pathname.startsWith('/clients/')) {
     return { title: 'Client', backTo: '/clients' }
   }
@@ -101,7 +118,7 @@ export default function AppLayout() {
   const location = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
 
-  const page = getPageMeta(location.pathname)
+  const page = getPageMeta(location.pathname, location.search)
   const moreActive = isMoreRoute(location.pathname)
   const isHome = location.pathname === '/dashboard'
 

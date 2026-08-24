@@ -85,6 +85,34 @@ export interface Vehicle {
   payment_schedules?: PaymentSchedule[]
 }
 
+export interface VehicleInsuranceReport {
+  vehicle_id: string
+  agent_id: string
+  client_id: string
+  client_name: string
+  client_phone: string
+  client_status: ClientStatus
+  registration: string
+  chassis?: string | null
+  make: string
+  model: string
+  year?: number | null
+  use_type: VehicleUse
+  insurer: string
+  package_type: PolicyType
+  policy_number?: string | null
+  premium: number
+  sum_insured?: number
+  vehicle_value?: number
+  start_date: string
+  expiry_date: string
+  cover_months?: number
+  schedule_id?: string | null
+  total_premium?: number | null
+  installment_count?: number | null
+  cover_status: 'in_force' | 'expiring_soon' | 'expired'
+}
+
 // ─── Payment Schedule ─────────────────────────────────────────────────────────
 
 export interface Installment {

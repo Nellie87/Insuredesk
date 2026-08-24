@@ -2142,6 +2142,12 @@ export default function ClientDetailPage() {
                   >
                     Log Payment
                   </button>
+                  <Link
+                    to={`/vehicles/add?clientId=${client.id}`}
+                    className={BTN_SECONDARY}
+                  >
+                    Add vehicle
+                  </Link>
                 </div>
               </div>
 
@@ -2298,13 +2304,21 @@ export default function ClientDetailPage() {
         <div id="vehicles-section" className="grid grid-cols-1 gap-6 xl:grid-cols-5">
           {/* Vehicles & Installments List */}
           <section className="space-y-4 xl:col-span-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-bold text-slate-900">
                 Payment Schedules & Configurations
               </h2>
-              <span className="text-xs font-semibold text-slate-400">
-                {vehicles.length} {vehicles.length === 1 ? 'vehicle' : 'vehicles'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-400">
+                  {vehicles.length} {vehicles.length === 1 ? 'vehicle' : 'vehicles'}
+                </span>
+                <Link
+                  to={`/vehicles/add?clientId=${client.id}`}
+                  className="rounded-lg px-2.5 py-1 text-xs font-semibold text-primary-600 hover:bg-primary-50"
+                >
+                  Add vehicle
+                </Link>
+              </div>
             </div>
 
             {vehicles.length === 0 ? (

@@ -34,6 +34,17 @@ export function ClientsIcon(props) {
   )
 }
 
+export function VehiclesIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M3 13.5h18l-1.2-4.2A2 2 0 0 0 17.9 8H6.1A2 2 0 0 0 4.2 9.3L3 13.5Z" />
+      <path d="M5 16.5v1.2a1.3 1.3 0 0 0 1.3 1.3h1.4A1.3 1.3 0 0 0 9 17.7V16.5" />
+      <path d="M15 16.5v1.2a1.3 1.3 0 0 0 1.3 1.3h1.4a1.3 1.3 0 0 0 1.3-1.3V16.5" />
+      <path d="M3 13.5v3h18v-3" />
+    </Svg>
+  )
+}
+
 export function PaymentsIcon(props) {
   return (
     <Svg {...props}>

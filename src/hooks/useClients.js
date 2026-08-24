@@ -32,6 +32,51 @@ function vehicleCloudPayload(updates) {
   return payload
 }
 
+function buildNewVehicle({ vehicle, clientId, agentId, now, vehicleId }) {
+  return {
+    id: vehicleId,
+    client_id: clientId,
+    agent_id: agentId,
+    registration: vehicle.registration.trim().toUpperCase(),
+    chassis: vehicle.chassis?.trim().toUpperCase() || null,
+    make: vehicle.make.trim(),
+    model: vehicle.model.trim(),
+    year: vehicle.year ? Number(vehicle.year) : null,
+    engine_capacity: parseEngineCapacity(vehicle.engine_capacity),
+    vehicle_value: Number(vehicle.vehicle_value || 0),
+    use_type: vehicle.use_type || 'private',
+    insurer: vehicle.insurer.trim(),
+    policy_number: vehicle.policy_number?.trim() || null,
+    policy_type: vehicle.policy_type,
+    start_date: vehicle.start_date,
+    expiry_date: vehicle.expiry_date,
+    cover_months: Number(vehicle.cover_months) || 12,
+    cover_history: asCoverHistory(vehicle.cover_history),
+    sum_insured: Number(vehicle.sum_insured || 0),
+    premium: Number(vehicle.premium),
+    vehicle_notes: vehicle.vehicle_notes?.trim() || null,
+    cover_notes: vehicle.cover_notes?.trim() || null,
+    payment_notes: vehicle.payment_notes?.trim() || null,
+    created_at: now,
+  }
+}
+
+function buildNewSchedule({ schedule, vehicle, vehicleId, agentId, now }) {
+  if (!schedule?.installments?.length) return null
+  return {
+    id: crypto.randomUUID(),
+    vehicle_id: vehicleId,
+    agent_id: agentId,
+    total_premium: Number(schedule.total_premium ?? vehicle.premium),
+    down_payment: Number(schedule.down_payment || 0),
+    down_payment_paid: Boolean(schedule.down_payment_paid),
+    down_payment_paid_at: schedule.down_payment_paid_at || null,
+    installment_count: schedule.installments.length,
+    installments: schedule.installments,
+    created_at: now,
+  }
+}
+
 function schedulesEqual(a, b) {
   return (
     a?.down_payment_paid === b?.down_payment_paid &&
@@ -285,48 +330,20 @@ export function useClients() {
       updated_at: now,
     }
 
-    const newVehicle = {
-      id: vehicleId,
-      client_id: clientId,
-      agent_id: agentId,
-      registration: vehicle.registration.trim().toUpperCase(),
-      chassis: vehicle.chassis?.trim().toUpperCase() || null,
-      make: vehicle.make.trim(),
-      model: vehicle.model.trim(),
-      year: vehicle.year ? Number(vehicle.year) : null,
-      engine_capacity: parseEngineCapacity(vehicle.engine_capacity),
-      vehicle_value: Number(vehicle.vehicle_value || 0),
-      use_type: vehicle.use_type || 'private',
-      insurer: vehicle.insurer.trim(),
-      policy_number: vehicle.policy_number?.trim() || null,
-      policy_type: vehicle.policy_type,
-      start_date: vehicle.start_date,
-      expiry_date: vehicle.expiry_date,
-      cover_months: Number(vehicle.cover_months) || 12,
-      cover_history: asCoverHistory(vehicle.cover_history),
-      sum_insured: Number(vehicle.sum_insured || 0),
-      premium: Number(vehicle.premium),
-      vehicle_notes: vehicle.vehicle_notes?.trim() || null,
-      cover_notes: vehicle.cover_notes?.trim() || null,
-      payment_notes: vehicle.payment_notes?.trim() || null,
-      created_at: now,
-    }
-
-    let newSchedule = null
-    if (schedule?.installments?.length) {
-      newSchedule = {
-        id: crypto.randomUUID(),
-        vehicle_id: vehicleId,
-        agent_id: agentId,
-        total_premium: Number(schedule.total_premium ?? vehicle.premium),
-        down_payment: Number(schedule.down_payment || 0),
-        down_payment_paid: Boolean(schedule.down_payment_paid),
-        down_payment_paid_at: schedule.down_payment_paid_at || null,
-        installment_count: schedule.installments.length,
-        installments: schedule.installments,
-        created_at: now,
-      }
-    }
+    const newVehicle = buildNewVehicle({
+      vehicle,
+      clientId,
+      agentId,
+      now,
+      vehicleId,
+    })
+    const newSchedule = buildNewSchedule({
+      schedule,
+      vehicle,
+      vehicleId,
+      agentId,
+      now,
+    })
 
     const clientWithVehicle = {
       ...newClient,
@@ -352,6 +369,101 @@ export function useClients() {
 
     return clientWithVehicle
   }, [agentId, persistRecord])
+
+  // ─── Add another vehicle (and its own policy package) to an existing client
+  const addVehicleToClient = useCallback(async (clientId, { vehicle, schedule }) => {
+    if (!clientId) throw new Error('Client is required.')
+
+    const vehicleId = crypto.randomUUID()
+    const now = new Date().toISOString()
+    const newVehicle = buildNewVehicle({
+      vehicle,
+      clientId,
+      agentId,
+      now,
+      vehicleId,
+    })
+    const newSchedule = buildNewSchedule({
+      schedule,
+      vehicle,
+      vehicleId,
+      agentId,
+      now,
+    })
+
+    const nestedVehicle = {
+      ...newVehicle,
+      payment_schedules: newSchedule ? [newSchedule] : [],
+    }
+
+    let parentClient = null
+    let previousStatus = null
+
+    setClients(prev =>
+      prev.map(client => {
+        if (client.id !== clientId) return client
+        previousStatus = client.status
+        const coverStillValid = !isCoverExpired(newVehicle.expiry_date, todayIso())
+        parentClient = {
+          ...client,
+          status: coverStillValid ? 'active' : client.status,
+          updated_at: now,
+          vehicles: [...(client.vehicles ?? []), nestedVehicle],
+        }
+        return parentClient
+      })
+    )
+
+    if (!parentClient) {
+      const existing = await localGet('clients', clientId)
+      if (!existing) throw new Error('Client not found')
+      previousStatus = existing.status
+      const coverStillValid = !isCoverExpired(newVehicle.expiry_date, todayIso())
+      parentClient = {
+        ...existing,
+        status: coverStillValid ? 'active' : existing.status,
+        updated_at: now,
+        vehicles: [...(existing.vehicles ?? []), nestedVehicle],
+      }
+      setClients(prev => {
+        if (prev.some(client => client.id === clientId)) {
+          return prev.map(client => (client.id === clientId ? parentClient : client))
+        }
+        return [...prev, parentClient].sort((a, b) => a.name.localeCompare(b.name))
+      })
+    }
+
+    await localPut('vehicles', newVehicle)
+    if (newSchedule) await localPut('payment_schedules', newSchedule)
+    await localPut('clients', parentClient)
+
+    await persistRecord('vehicles', newVehicle)
+    if (newSchedule) await persistRecord('payment_schedules', newSchedule)
+
+    if (parentClient.status !== previousStatus) {
+      if (isOnline) {
+        const { error: clientErr } = await supabase
+          .from('clients')
+          .update({ status: parentClient.status, updated_at: now })
+          .eq('id', clientId)
+        if (clientErr) {
+          await addToSyncQueue({
+            table: 'clients',
+            operation: 'update',
+            payload: { id: clientId, status: parentClient.status, updated_at: now },
+          })
+        }
+      } else {
+        await addToSyncQueue({
+          table: 'clients',
+          operation: 'update',
+          payload: { id: clientId, status: parentClient.status, updated_at: now },
+        })
+      }
+    }
+
+    return nestedVehicle
+  }, [agentId, isOnline, persistRecord])
 
   // ─── Update client ──────────────────────────────────────────────────────────
   const updateClient = useCallback(async (id, updates) => {
@@ -694,6 +806,7 @@ export function useClients() {
     refetch: fetchClients,
     addClient,
     addClientWithVehicle,
+    addVehicleToClient,
     importClientsBatch,
     updateClient,
     updateVehicle,
