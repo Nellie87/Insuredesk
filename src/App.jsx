@@ -15,6 +15,8 @@ import RemindersPage   from './pages/RemindersPage'
 import CommissionsPage from './pages/CommissionsPage'
 import SettingsPage    from './pages/SettingsPage'
 import ProspectsPage from './pages/ProspectsPage'
+import VehiclesPage from './pages/VehiclesPage'
+import AddVehiclePage from './pages/AddVehiclePage'
 
 // Layout
 import AppLayout from './components/layout/AppLayout'
@@ -71,6 +73,8 @@ export default function App() {
           <Route path="clients/add"         element={<AddClientPage />} />
           <Route path="clients/import"      element={<ImportClientsPage />} />
           <Route path="clients/:clientId"   element={<ClientDetailPage />} />
+          <Route path="vehicles"            element={<VehiclesPage />} />
+          <Route path="vehicles/add"        element={<AddVehiclePage />} />
           <Route path="calculator"          element={<CalculatorPage />} />
           <Route path="payments"            element={<PaymentsPage />} />
           <Route path="reminders"           element={<RemindersPage />} />
