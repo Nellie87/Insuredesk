@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, cloneElement, isValidElement } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useClients } from '../hooks/useClients'
 import { usePayments } from '../hooks/usePayments'
@@ -226,7 +226,14 @@ function Field({ label, required, hint, children, className = '' }) {
         {required && <span className={REQUIRED_MARK}>*</span>}
       </label>
       {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
-      <div className="mt-1.5">{children}</div>
+      <div className="mt-1.5">
+        {isValidElement(children) && children.type === Select
+          ? cloneElement(children, {
+              title: children.props.title || label,
+              'aria-label': children.props['aria-label'] || label,
+            })
+          : children}
+      </div>
     </div>
   )
 }
@@ -503,6 +510,9 @@ function TopPolicyOverviewCard({ vehicles, onRenew }) {
             {vehicles.length > 1 && (
               <Select
                 size="sm"
+                title="Vehicle"
+                aria-label="Select vehicle"
+                className="max-w-[min(100%,16rem)]"
                 value={activeVehicle.id}
                 onChange={e => setSelectedVehicleId(e.target.value)}
               >

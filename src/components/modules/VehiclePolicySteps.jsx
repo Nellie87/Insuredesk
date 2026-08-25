@@ -1,3 +1,4 @@
+import { cloneElement, isValidElement } from 'react'
 import DateInput from '../ui/DateInput'
 import Select from '../ui/Select'
 import { INSURER_OPTIONS } from '../../constants/insurers'
@@ -19,7 +20,14 @@ export function Field({ label, required, hint, children, className = '' }) {
         {required && <span className={REQUIRED_MARK}>*</span>}
       </label>
       {hint && <p className="mt-0.5 text-sm text-slate-400">{hint}</p>}
-      <div className="mt-1.5">{children}</div>
+      <div className="mt-1.5">
+        {isValidElement(children) && children.type === Select
+          ? cloneElement(children, {
+              title: children.props.title || label,
+              'aria-label': children.props['aria-label'] || label,
+            })
+          : children}
+      </div>
     </div>
   )
 }

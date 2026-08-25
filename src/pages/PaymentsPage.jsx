@@ -317,12 +317,14 @@ export default function PaymentsPage() {
                   Vehicle <span className="normal-case text-red-600">*</span>
                 </label>
                 {!form.clientId ? (
-                  <Select disabled className="mt-1.5" value="">
+                  <Select disabled className="mt-1.5" title="Vehicle" value="">
                     <option value="">Select a client first</option>
                   </Select>
                 ) : multiVehicle ? (
                   <Select
                     required
+                    title="Vehicle"
+                    aria-label="Vehicle"
                     value={form.vehicleId}
                     onChange={e => set('vehicleId', e.target.value)}
                     className="mt-1.5"
@@ -364,6 +366,8 @@ export default function PaymentsPage() {
               <div>
                 <label className={LABEL}>Method</label>
                 <Select
+                  title="Payment method"
+                  aria-label="Payment method"
                   value={form.method}
                   onChange={e => set('method', e.target.value)}
                   className="mt-1.5"

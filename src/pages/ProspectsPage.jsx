@@ -261,6 +261,8 @@ export default function ProspectsPage() {
             </div>
 
             <Select
+              title="Preferred insurer"
+              aria-label="Preferred insurer"
               value={form.preferred_insurer}
               onChange={e => set('preferred_insurer', e.target.value)}
             >
@@ -375,6 +377,8 @@ export default function ProspectsPage() {
               )}
 
               <Select
+                title="Stage"
+                aria-label="Prospect stage"
                 value={prospect.stage}
                 onChange={async e => {
                   try {

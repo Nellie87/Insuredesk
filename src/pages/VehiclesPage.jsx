@@ -112,104 +112,118 @@ export default function VehiclesPage() {
         }
       />
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-card">
+      <section className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        <div className="min-w-0 rounded-2xl border border-stone-200/80 bg-white p-3 shadow-card sm:p-4">
           <p className="text-2xs font-medium uppercase tracking-[0.06em] text-ink-faint">
             Vehicles
           </p>
-          <p className="mt-1.5 font-sans text-lg font-semibold text-ink sm:text-xl">
+          <p className="mt-1 break-words font-sans text-base font-semibold leading-tight text-ink sm:text-xl">
             {stats.totalVehicles}
           </p>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 truncate text-xs text-slate-400">
             {allStats.totalVehicles} in portfolio
           </p>
         </div>
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-card">
+        <div className="min-w-0 rounded-2xl border border-stone-200/80 bg-white p-3 shadow-card sm:p-4">
           <p className="text-2xs font-medium uppercase tracking-[0.06em] text-ink-faint">
             Premium
           </p>
-          <p className="mt-1.5 font-sans text-lg font-semibold text-ink sm:text-xl">
+          <p className="mt-1 break-words font-sans text-base font-semibold leading-tight text-ink sm:text-xl">
             {formatKSh(stats.totalPremium)}
           </p>
         </div>
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-card">
+        <div className="min-w-0 rounded-2xl border border-stone-200/80 bg-white p-3 shadow-card sm:p-4">
           <p className="text-2xs font-medium uppercase tracking-[0.06em] text-ink-faint">
             Outstanding
           </p>
-          <p className="mt-1.5 font-sans text-lg font-semibold text-warning-700 sm:text-xl">
+          <p className="mt-1 break-words font-sans text-base font-semibold leading-tight text-warning-700 sm:text-xl">
             {formatKSh(stats.totalOutstanding)}
           </p>
         </div>
-        <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-card">
+        <div className="min-w-0 rounded-2xl border border-stone-200/80 bg-white p-3 shadow-card sm:p-4">
           <p className="text-2xs font-medium uppercase tracking-[0.06em] text-ink-faint">
             Cover alerts
           </p>
-          <p className="mt-1.5 font-sans text-lg font-semibold text-ink sm:text-xl">
+          <p className="mt-1 break-words font-sans text-base font-semibold leading-tight text-ink sm:text-xl">
             {stats.expiringCount + stats.expiredCount}
           </p>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 truncate text-xs text-slate-400">
             {stats.expiringCount} expiring · {stats.expiredCount} expired
           </p>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card">
-        <h2 className="text-sm font-bold text-slate-900">By insurance package</h2>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="sticky top-0 z-10 -mx-4 space-y-2.5 border-b border-stone-200/70 bg-canvas/95 px-4 py-2.5 backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+        <SearchField
+          placeholder="Search plate, client, insurer..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <Select
+            searchable
+            title="Client"
+            aria-label="Filter by client"
+            value={clientId}
+            onChange={e => setClientId(e.target.value)}
+          >
+            <option value="all">All clients</option>
+            {clientOptions.map(client => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+                {client.count ? ` (${client.count})` : ''}
+              </option>
+            ))}
+          </Select>
+          <Select
+            title="Cover status"
+            aria-label="Filter by cover"
+            value={coverStatus}
+            onChange={e => setCoverStatus(e.target.value)}
+          >
+            {COVER_FILTERS.map(item => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 hide-scrollbar">
+          <button
+            type="button"
+            onClick={() => setPackageType('all')}
+            className={`min-h-10 shrink-0 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors ${
+              packageType === 'all'
+                ? 'bg-primary-600 text-white shadow-soft'
+                : 'border border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'
+            }`}
+          >
+            All packages
+          </button>
           {POLICY_TYPES.map(type => {
             const bucket = stats.byPackage[type.value] || { count: 0, premium: 0 }
+            const active = packageType === type.value
             return (
               <button
                 key={type.value}
                 type="button"
-                onClick={() =>
-                  setPackageType(prev => (prev === type.value ? 'all' : type.value))
-                }
-                className={`rounded-xl border px-3.5 py-3 text-left transition ${
-                  packageType === type.value
-                    ? 'border-primary-300 bg-primary-50'
-                    : 'border-slate-200 bg-slate-50/60 hover:border-primary-200'
+                onClick={() => setPackageType(active ? 'all' : type.value)}
+                className={`min-h-10 shrink-0 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors ${
+                  active
+                    ? 'bg-primary-600 text-white shadow-soft'
+                    : 'border border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'
                 }`}
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {type.label}
-                </p>
-                <p className="mt-1 text-base font-bold text-slate-900">
-                  {bucket.count} {bucket.count === 1 ? 'vehicle' : 'vehicles'}
-                </p>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {formatKSh(bucket.premium)}
-                </p>
+                {type.label}
+                <span className={`ml-1.5 ${active ? 'text-white/80' : 'text-slate-400'}`}>
+                  {bucket.count}
+                </span>
               </button>
             )
           })}
         </div>
-      </section>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="sm:col-span-2">
-          <SearchField
-            placeholder="Search client, plate, make, insurer, policy no..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-        <Select value={clientId} onChange={e => setClientId(e.target.value)}>
-          <option value="all">All clients</option>
-          {clientOptions.map(client => (
-            <option key={client.id} value={client.id}>
-              {client.name}
-              {client.count ? ` (${client.count})` : ''}
-            </option>
-          ))}
-        </Select>
-        <Select value={coverStatus} onChange={e => setCoverStatus(e.target.value)}>
-          {COVER_FILTERS.map(item => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </Select>
       </div>
 
       {loading ? (
@@ -222,52 +236,52 @@ export default function VehiclesPage() {
         </div>
       ) : (
         <>
-          <div className="space-y-2.5 lg:hidden">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:hidden">
             {filtered.map(row => (
               <Link
                 key={row.vehicleId}
                 to={`/clients/${row.clientId}`}
-                className="block rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card transition-transform active:scale-[0.99]"
+                className="block min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-card transition-transform active:scale-[0.99]"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-900">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-slate-900">
                       {row.registration || 'Pending reg'}
                     </div>
-                    <div className="mt-0.5 text-xs text-slate-500">
+                    <div className="mt-0.5 truncate text-xs text-slate-500">
                       {row.clientName}
                       {' · '}
-                      {[row.year, row.make, row.model].filter(Boolean).join(' ')}
-                    </div>
-                    <div className="mt-1 text-xs font-medium text-slate-400">
-                      {row.packageLabel}
-                      {row.insurer ? ` · ${row.insurer}` : ''}
+                      {[row.year, row.make, row.model].filter(Boolean).join(' ') || 'Vehicle'}
                     </div>
                   </div>
                   <StatusBadge status={COVER_BADGE[row.coverStatus] || 'pending'} />
                 </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
-                  <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                <div className="mt-1 truncate text-xs font-medium text-slate-400">
+                  {row.packageLabel}
+                  {row.insurer ? ` · ${row.insurer}` : ''}
+                </div>
+                <div className="mt-2.5 grid grid-cols-3 gap-1.5 border-t border-slate-100 pt-2.5">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                       Premium
                     </div>
-                    <div className="mt-0.5 text-sm font-semibold text-slate-900">
+                    <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-slate-900 sm:text-sm">
                       {formatKSh(row.premium)}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                       Paid
                     </div>
-                    <div className="mt-0.5 text-sm font-semibold text-success-700">
+                    <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-success-700 sm:text-sm">
                       {formatKSh(row.amountPaid)}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  <div className="min-w-0 text-right">
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                       Expiry
                     </div>
-                    <div className="mt-0.5 text-sm font-semibold text-slate-900">
+                    <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-slate-900 sm:text-sm">
                       {formatDisplayDate(row.expiryDate) || '-'}
                     </div>
                   </div>
@@ -276,7 +290,7 @@ export default function VehiclesPage() {
             ))}
           </div>
 
-          <div className="surface-table hidden lg:block">
+          <div className="surface-table hidden overflow-x-auto lg:block">
             <table className="w-full text-left text-sm">
               <thead className="table-head">
                 <tr>
@@ -291,29 +305,29 @@ export default function VehiclesPage() {
               <tbody className="divide-y divide-slate-100">
                 {filtered.map(row => (
                   <tr key={row.vehicleId} className="transition hover:bg-primary-50/40">
-                    <td className="px-5 py-3.5">
+                    <td className="max-w-[12rem] px-5 py-3.5">
                       <Link
                         to={`/clients/${row.clientId}`}
-                        className="font-semibold text-slate-900 hover:text-primary-600"
+                        className="block truncate font-semibold text-slate-900 hover:text-primary-600"
                       >
                         {row.registration || 'Pending reg'}
                       </Link>
-                      <div className="mt-0.5 text-xs text-slate-500">
+                      <div className="mt-0.5 truncate text-xs text-slate-500">
                         {[row.year, row.make, row.model].filter(Boolean).join(' ')}
                       </div>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="max-w-[12rem] px-5 py-3.5">
                       <Link
                         to={`/clients/${row.clientId}`}
-                        className="font-medium text-slate-800 hover:text-primary-600"
+                        className="block truncate font-medium text-slate-800 hover:text-primary-600"
                       >
                         {row.clientName}
                       </Link>
-                      <div className="mt-0.5 text-xs text-slate-500">{row.clientPhone}</div>
+                      <div className="mt-0.5 truncate text-xs text-slate-500">{row.clientPhone}</div>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600">
-                      <div>{row.packageLabel}</div>
-                      <div className="mt-0.5 text-xs text-slate-400">
+                    <td className="max-w-[14rem] px-5 py-3.5 text-slate-600">
+                      <div className="truncate">{row.packageLabel}</div>
+                      <div className="mt-0.5 truncate text-xs text-slate-400">
                         {row.insurer || '—'}
                         {row.policyNumber ? ` · #${row.policyNumber}` : ''}
                       </div>

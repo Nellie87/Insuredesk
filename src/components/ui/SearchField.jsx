@@ -1,10 +1,10 @@
 export default function SearchField({ label, placeholder, value, onChange }) {
   return (
-    <div>
+    <div className="min-w-0">
       {label && (
         <div className="mb-2 text-sm font-medium text-ink-muted">{label}</div>
       )}
-      <div className="relative">
+      <div className="relative min-w-0">
         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint">
           <svg
             width="16"
@@ -25,7 +25,7 @@ export default function SearchField({ label, placeholder, value, onChange }) {
           placeholder={placeholder}
           value={value}
           onChange={onChange}
-          className="w-full rounded-xl border border-stone-200 bg-white py-3 pl-10 pr-3 text-sm text-ink placeholder:text-ink-faint shadow-soft transition focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          className="w-full min-w-0 rounded-xl border border-stone-200 bg-white py-3 pl-10 pr-3 text-sm text-ink shadow-soft transition placeholder:truncate placeholder:text-ink-faint focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         />
       </div>
     </div>
