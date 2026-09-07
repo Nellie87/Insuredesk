@@ -45,9 +45,10 @@ export function collectDueItems({
     if (days === 0 || days === 7 || days === 14 || days === 30) {
       const when =
         days === 0 ? 'expires today' : days === 1 ? 'expires tomorrow' : `expires in ${days} days`
-      items.push({
+        items.push({
         key: `renewal:${vehicle.id}:${vehicle.expiry_date}:${days}`,
         type: 'renewal',
+        attention: days === 0 ? 'today' : 'upcoming',
         title: `Policy ${when}`,
         body: `${clientName} · ${vehicle.registration}`,
       })
@@ -82,6 +83,7 @@ export function collectDueItems({
         items.push({
           key: `payment-overdue:${vehicle.id}:${installment.due_date}:${installment.number ?? ''}`,
           type: 'payment',
+          attention: 'today',
           title: 'Payment overdue',
           body: `${clientName} · ${vehicle.registration}`,
         })
@@ -92,6 +94,7 @@ export function collectDueItems({
         items.push({
           key: `payment-due:${vehicle.id}:${installment.due_date}:${installment.number ?? ''}`,
           type: 'payment',
+          attention: 'today',
           title: 'Payment due today',
           body: `${clientName} · ${vehicle.registration}`,
         })
@@ -101,6 +104,7 @@ export function collectDueItems({
         items.push({
           key: `payment-soon:${vehicle.id}:${installment.due_date}:${days}`,
           type: 'payment',
+          attention: 'upcoming',
           title: days === 1 ? 'Payment due tomorrow' : `Payment due in ${days} days`,
           body: `${clientName} · ${vehicle.registration}`,
         })
@@ -118,6 +122,7 @@ export function collectDueItems({
     items.push({
       key: `followup:${prospect.id}:${prospect.follow_up_date}`,
       type: 'follow_up',
+      attention: 'today',
       title: days < 0 ? 'Overdue follow-up' : 'Follow up today',
       body: prospect.full_name,
     })
@@ -130,6 +135,7 @@ export function collectDueItems({
     items.push({
       key: `reminder:${reminder.id}:${dateKey}`,
       type: 'reminder',
+      attention: 'today',
       title: String(reminder.trigger_type || 'Reminder').replace(/_/g, ' '),
       body: reminder.message?.slice(0, 80) || 'Scheduled reminder',
     })
@@ -138,13 +144,16 @@ export function collectDueItems({
   return items
 }
 
-export function buildPushPayload(items) {
+export function buildPushPayload(items, options = {}) {
+  const url = options.url || '/reminders'
+  const digestTitle = options.digestTitle
+
   if (items.length === 1) {
     return {
       title: items[0].title,
       body: items[0].body,
       tag: items[0].key,
-      url: '/reminders',
+      url,
     }
   }
 
@@ -168,9 +177,9 @@ export function buildPushPayload(items) {
   }
 
   return {
-    title: `${items.length} reminders today`,
-    body: parts.join(' · ') || 'Open the calendar for details.',
-    tag: `digest-${items.length}`,
-    url: '/reminders',
+    title: digestTitle || `${items.length} reminders today`,
+    body: parts.join(' · ') || 'Open the app for details.',
+    tag: `digest-${url}-${items.length}`,
+    url,
   }
 }

@@ -1,19 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="InsureAgent">
-  <rect width="512" height="512" fill="#0f172a"/>
-  <path
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="wakalapro">
+  <defs>
+    <linearGradient id="wp-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3d8077"/>
+      <stop offset="100%" stop-color="#234640"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#wp-bg)"/>
+  <g
     fill="none"
     stroke="#ffffff"
-    stroke-width="26"
-    stroke-linejoin="round"
-    d="M256 86c-44 26-102 34-154 38v152c0 84 58 144 154 180 96-36 154-96 154-180V124c-52-4-110-12-154-38z"
-  />
-  <rect x="236" y="176" width="40" height="168" rx="4" fill="#ffffff"/>
-  <path
-    fill="none"
-    stroke="#ffffff"
-    stroke-width="30"
+    stroke-width="40"
     stroke-linecap="round"
     stroke-linejoin="round"
-    d="M190 274l48 48 112-118"
-  />
+  >
+    <path d="M108 156L156 356L204 156L252 356L300 156"/>
+    <path d="M348 156V356"/>
+    <path d="M348 156C416 156 416 262 348 262"/>
+  </g>
 </svg>

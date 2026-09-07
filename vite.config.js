@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => {
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'favicon-32.png', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Insurance Agent Manager',
-        short_name: 'InsureAgent',
+        name: 'wakalapro',
+        short_name: 'wakalapro',
         description: 'Manage your clients, vehicles, payments and commissions',
         theme_color: '#2f6b64',
         background_color: '#f4f2ed',

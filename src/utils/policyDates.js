@@ -42,6 +42,16 @@ export function compareIsoDates(a, b) {
     .localeCompare(String(b || '').slice(0, 10))
 }
 
+/** Whole days from `fromIso` to `toIso` (to − from). */
+export function daysBetweenIso(fromIso, toIso) {
+  const from = parseIsoParts(fromIso)
+  const to = parseIsoParts(toIso)
+  if (!from || !to) return null
+  const start = Date.UTC(from.year, from.month - 1, from.day)
+  const end = Date.UTC(to.year, to.month - 1, to.day)
+  return Math.round((end - start) / 86400000)
+}
+
 export function isCoverExpired(expiryDate, today = todayIso()) {
   if (!expiryDate) return false
   return compareIsoDates(expiryDate, today) < 0

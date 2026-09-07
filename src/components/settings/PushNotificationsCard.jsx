@@ -61,8 +61,8 @@ export default function PushNotificationsCard({ compact = false }) {
 
       {!compact && (
         <p className="text-xs text-slate-500">
-          You will get a lock-screen summary when payments, renewals, or follow-ups
-          are due. On iPhone this only works after you add the app to your Home Screen.
+          You will get a lock-screen summary of what needs you today.
+          On iPhone this only works after you add the app to your Home Screen.
         </p>
       )}
 

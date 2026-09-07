@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useClients } from '../hooks/useClients'
+import { useTodaysTasks } from '../hooks/useTodaysTasks'
 import { useAppStore } from '../store/appStore'
 import { localGetAll } from '../lib/db'
 import {
@@ -69,6 +70,7 @@ function totalOverdueOnSchedule(schedule, today) {
 
 export default function DashboardPage() {
   const { clients, loading } = useClients()
+  const { summary: todaySummary, loading: todayLoading } = useTodaysTasks()
   const { agent, session } = useAppStore()
   const agentId = session?.user?.id
   const [confirmedCommission, setConfirmedCommission] = useState(0)
@@ -303,6 +305,26 @@ export default function DashboardPage() {
           Add client
         </Link>
       </div>
+
+      <Link
+        to="/today"
+        className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200/80 bg-white px-4 py-3.5 shadow-card transition hover:border-primary-200 hover:bg-primary-50/40"
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-ink">Today</p>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            {todayLoading
+              ? 'Checking what needs you…'
+              : todaySummary.headline}
+          </p>
+          {!todayLoading && todaySummary.label ? (
+            <p className="mt-0.5 text-xs text-ink-faint">{todaySummary.label}</p>
+          ) : null}
+        </div>
+        <span className="shrink-0 rounded-full bg-primary-700 px-3 py-1.5 text-xs font-semibold text-white">
+          View
+        </span>
+      </Link>
 
       <div className="grid grid-cols-3 divide-x divide-stone-200/80 lg:gap-4 lg:divide-x-0">
         <StatCell

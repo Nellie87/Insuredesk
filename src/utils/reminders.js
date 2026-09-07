@@ -194,3 +194,52 @@ export function whatsappUrl(phone, message) {
   if (!normalized) return null
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`
 }
+
+function outreachType(item) {
+  if (item.type === 'collect' || item.type === 'payment') return 'payment'
+  if (item.type === 'renew' || item.type === 'renewal') return 'renewal'
+  return item.type
+}
+
+/** WhatsApp / SMS copy for a calendar event or today's-task row. */
+export function getOutreachMessage(item, agent) {
+  if (!agent || !item) return null
+
+  let message = item.reminder?.message
+  const kind = outreachType(item)
+
+  if (!message && item.client && item.vehicle) {
+    const trigger =
+      item.trigger ||
+      (kind === 'renewal'
+        ? 'policy_expiry_today'
+        : paymentReminderTriggerForDueDate(item.installment?.due_date))
+
+    message = buildReminderMessage({
+      trigger,
+      client: item.client,
+      vehicle: item.vehicle,
+      installment: item.installment,
+      outstanding: item.outstanding,
+      agent,
+    })
+  }
+
+  if (!message && item.prospect) {
+    const firstName = String(item.prospect.full_name || 'there').split(' ')[0]
+    message = `Hello ${firstName}, this is ${agent.name}. Following up on your insurance enquiry. Please call or WhatsApp me on ${agent.phone}.`
+  }
+
+  return message || null
+}
+
+export function getItemPhone(item) {
+  return item?.client?.phone || item?.prospect?.phone || null
+}
+
+export function getWhatsAppLink(item, agent) {
+  const phone = getItemPhone(item)
+  const message = getOutreachMessage(item, agent)
+  if (!phone || !message) return null
+  return whatsappUrl(phone, message)
+}

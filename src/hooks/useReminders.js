@@ -15,8 +15,8 @@ import { parseISO, differenceInDays, format, isAfter, isBefore, addDays, subDays
 export function useReminders() {
   const { session, isOnline } = useAppStore()
   const agentId = session?.user?.id
-  const { clients } = useClients()
-  const { prospects } = useProspects()
+  const { clients, loading: clientsLoading } = useClients()
+  const { prospects, loading: prospectsLoading } = useProspects()
 
   const [reminders, setReminders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -202,5 +202,13 @@ export function useReminders() {
     }))
   }, [calendarEvents])
 
-  return { reminders, calendarEvents, groupedByDate, loading, refetch: fetchReminders }
+  return {
+    clients,
+    prospects,
+    reminders,
+    calendarEvents,
+    groupedByDate,
+    loading: loading || clientsLoading || prospectsLoading,
+    refetch: fetchReminders,
+  }
 }

@@ -3,6 +3,7 @@ import { Outlet, NavLink, Link, useLocation } from 'react-router-dom'
 import { useAppStore } from '../../store/appStore'
 import {
   HomeIcon,
+  TodayIcon,
   ClientsIcon,
   PaymentsIcon,
   CalendarIcon,
@@ -16,6 +17,7 @@ import {
   ChevronLeftIcon,
   CloseIcon,
 } from '../icons/NavIcons'
+import BrandMark from '../icons/BrandMark'
 
 const PRIMARY_NAV = [
   { to: '/dashboard', label: 'Home', icon: HomeIcon, end: true },
@@ -24,7 +26,21 @@ const PRIMARY_NAV = [
   { to: '/reminders', label: 'Calendar', icon: CalendarIcon },
 ]
 
+const SIDEBAR_NAV = [
+  { to: '/dashboard', label: 'Home', icon: HomeIcon, end: true },
+  { to: '/today', label: 'Today', icon: TodayIcon },
+  { to: '/clients', label: 'Clients', icon: ClientsIcon },
+  { to: '/payments', label: 'Payments', icon: PaymentsIcon },
+  { to: '/reminders', label: 'Calendar', icon: CalendarIcon },
+]
+
 const MORE_NAV = [
+  {
+    to: '/today',
+    label: 'Today',
+    hint: 'What needs you today',
+    icon: TodayIcon,
+  },
   {
     to: '/vehicles',
     label: 'Vehicles',
@@ -59,6 +75,7 @@ const MORE_NAV = [
 
 const PAGE_META = {
   '/dashboard': { title: 'Home' },
+  '/today': { title: 'Today' },
   '/clients': { title: 'Clients' },
   '/clients/add': { title: 'Add client', backTo: '/clients' },
   '/clients/import': { title: 'Import clients', backTo: '/clients' },
@@ -79,7 +96,7 @@ function getInitials(name = '') {
       .filter(Boolean)
       .slice(0, 2)
       .map(part => part[0]?.toUpperCase())
-      .join('') || 'IA'
+      .join('') || 'WP'
   )
 }
 
@@ -96,7 +113,7 @@ function getPageMeta(pathname, search = '') {
   if (pathname.startsWith('/clients/')) {
     return { title: 'Client', backTo: '/clients' }
   }
-  return { title: 'InsureAgent' }
+  return { title: 'wakalapro' }
 }
 
 function isMoreRoute(pathname) {
@@ -144,12 +161,10 @@ export default function AppLayout() {
     <div className="app-canvas">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200/80 bg-white/90 backdrop-blur-md lg:flex">
         <div className="flex h-16 items-center gap-3 border-b border-slate-200/80 px-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-step-active text-sm font-semibold text-white shadow-soft">
-            IA
-          </div>
+          <BrandMark className="h-9 w-9" />
           <div className="min-w-0">
             <div className="truncate font-display text-[15px] text-ink">
-              InsureAgent
+              wakalapro
             </div>
             <div className="truncate text-2xs font-medium text-ink-faint">
               Agent workspace
@@ -158,7 +173,7 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
-          {PRIMARY_NAV.map(({ to, label, icon: Icon, end }) => (
+          {SIDEBAR_NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} className={sidebarLinkClass}>
               <Icon className="h-5 w-5 shrink-0 opacity-90" />
               {label}
@@ -167,7 +182,8 @@ export default function AppLayout() {
 
           <div className="my-3 h-px bg-slate-200/80" />
 
-          {MORE_NAV.map(({ to, label, icon: Icon }) => (
+          {MORE_NAV.filter(item => !SIDEBAR_NAV.some(nav => nav.to === item.to)).map(
+            ({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} className={sidebarLinkClass}>
               <Icon className="h-5 w-5 shrink-0 opacity-90" />
               {label}
@@ -220,7 +236,10 @@ export default function AppLayout() {
               <h1 className="truncate font-display text-[1.05rem] text-ink lg:text-xl">
                 {isHome ? (
                   <>
-                    <span className="lg:hidden">InsureAgent</span>
+                    <span className="flex items-center gap-2 lg:hidden">
+                      <BrandMark className="h-7 w-7" />
+                      wakalapro
+                    </span>
                     <span className="hidden lg:inline">Home</span>
                   </>
                 ) : (

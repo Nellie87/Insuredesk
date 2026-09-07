@@ -322,3 +322,20 @@ comment on view vehicle_insurance_report is
 alter view vehicle_insurance_report set (security_invoker = true);
 
 grant select on vehicle_insurance_report to authenticated;
+
+-- Cheap heartbeat for an external cron (GitHub Actions). Free-tier projects pause
+-- after a week with no API traffic; pg_cron inside the paused database cannot help.
+create or replace function public.keep_alive()
+returns timestamptz
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select now();
+$$;
+
+comment on function public.keep_alive() is
+  'Heartbeat used by external cron so the free-tier project does not pause.';
+
+grant execute on function public.keep_alive() to anon, authenticated;

@@ -1,4 +1,4 @@
-# InsureAgent - Insurance Agent Management System
+# wakalapro - Insurance Agent Management System
 
 A mobile-first Progressive Web App (PWA) for insurance agents to manage clients, vehicles, payments, commissions, and reminders.
 
@@ -50,6 +50,7 @@ npm install
 1. Go to [supabase.com](https://supabase.com) and create a free project
 2. In the SQL editor, run the contents of `schema.sql` to create all tables
 3. Copy your project URL and anon key from **Project Settings → API**
+4. Free-tier projects pause after a week with no API traffic. After you push this repo to GitHub, add **Actions secrets** `SUPABASE_URL` and `SUPABASE_ANON_KEY` (same values as `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`). The workflow `.github/workflows/keep-supabase-alive.yml` pings `keep_alive()` every morning so the project stays awake. If the database already exists, also run `migrations/008_keep_alive.sql`. Then open **Actions → Keep Supabase alive → Run workflow** once to confirm.
 
 ### 3. Configure environment
 
@@ -163,7 +164,7 @@ The in-app calendar does not wake your phone on its own. Phone alerts use **Web 
 
 **What you get:** lock-screen alerts for payments (14 days / 7 days / tomorrow / today / first overdue day), policy renewals (30 / 14 / 7 days and expiry day), and follow-ups. Several items on the same day are grouped into one summary.
 
-**iPhone:** iOS 16.4+. Add InsureAgent to the Home Screen, open it from there, then enable alerts in **Settings**. Safari-in-a-tab cannot receive them.
+**iPhone:** iOS 16.4+. Add wakalapro to the Home Screen, open it from there, then enable alerts in **Settings**. Safari-in-a-tab cannot receive them.
 
 ### 1. Database
 
@@ -203,6 +204,23 @@ curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/push-notify" \
 Until this job is running, **Enable alerts** still stores the phone subscription and **Send test** can confirm permission. Scheduled due-date alerts start after the job is live.
 
 Then open **Settings → Phone alerts** on the device and tap **Enable alerts**.
+
+---
+
+## Keep the free project awake
+
+Supabase pauses inactive free projects after about 7 days. A cron job **inside** the database (`pg_cron`) cannot prevent that: it sleeps when the project sleeps.
+
+This repo uses a GitHub Action instead. It POSTs to `/rest/v1/rpc/keep_alive` once a day. That is a real Postgres request, which resets the inactivity timer.
+
+1. Run `migrations/008_keep_alive.sql` in the SQL editor if you did not recreate from `schema.sql`.
+2. In the GitHub repo: **Settings → Secrets and variables → Actions**, add:
+   - `SUPABASE_URL` — `https://xxxx.supabase.co`
+   - `SUPABASE_ANON_KEY` — the anon/public key
+3. **Actions → Keep Supabase alive → Run workflow** to test.
+4. Leave the scheduled job enabled. Scheduled workflows only run on the default branch.
+
+Until this job is live, opening the app still counts as activity. The cron covers days when nobody logs in.
 
 ---
 

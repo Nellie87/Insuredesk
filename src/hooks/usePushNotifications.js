@@ -24,7 +24,7 @@ function describeStatus({
     return 'Notifications are allowed, and alerts are connected on this phone.'
   }
   if (permission === 'granted' && iosNeedsInstall) {
-    return 'Notifications are allowed. Add InsureAgent to your Home Screen, open it from there, then tap Enable alerts.'
+    return 'Notifications are allowed. Add wakalapro to your Home Screen, open it from there, then tap Enable alerts.'
   }
   if (permission === 'granted') {
     return 'Notifications are allowed. Tap Enable alerts to finish connecting this phone.'
@@ -32,12 +32,12 @@ function describeStatus({
   if (!supported) return 'This browser cannot receive push alerts.'
   if (!configured) return 'Push alerts are not configured on this server yet.'
   if (iosNeedsInstall) {
-    return 'On iPhone, add InsureAgent to your Home Screen, open it from there, then enable alerts.'
+    return 'On iPhone, add wakalapro to your Home Screen, open it from there, then enable alerts.'
   }
   if (permission === 'denied') {
     return 'Notifications are blocked for this app. Enable them in your phone or browser settings, then tap Enable alerts again.'
   }
-  return 'Turn on alerts to get due payments, renewals, and follow-ups on this phone.'
+    return 'Turn on alerts to get a morning summary of what needs you today.'
 }
 
 export function usePushNotifications() {
@@ -86,10 +86,10 @@ export function usePushNotifications() {
     setBusy(true)
     try {
       await enablePushNotifications(agentId)
-      await showLocalNotification('InsureAgent alerts are on', {
-        body: 'You will get a summary when payments, renewals, or follow-ups are due.',
-        tag: 'insureagent-enabled',
-        data: { url: '/reminders' },
+      await showLocalNotification('wakalapro alerts are on', {
+        body: 'You will get a morning summary of what needs you today.',
+        tag: 'wakalapro-enabled',
+        data: { url: '/today' },
       })
     } finally {
       await refresh()
@@ -119,10 +119,10 @@ export function usePushNotifications() {
         await sendTestPush()
         return 'push'
       } catch {
-        const shown = await showLocalNotification('InsureAgent test alert', {
+        const shown = await showLocalNotification('wakalapro test alert', {
           body: 'If you can read this, notification permission is working on this phone.',
-          tag: 'insureagent-test',
-          data: { url: '/reminders' },
+          tag: 'wakalapro-test',
+          data: { url: '/today' },
         })
         if (!shown) throw new Error('Could not show a test alert.')
         return 'local'

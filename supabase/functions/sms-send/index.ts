@@ -1,7 +1,7 @@
 import { sendAfricasTalkingSms } from '../_shared/africastalking.ts'
 
 const TEST_MESSAGE =
-  "InsureAgent sandbox test: the SMS reminder path works. Open the Africa's Talking simulator to read this message."
+  "wakalapro sandbox test: the SMS reminder path works. Open the Africa's Talking simulator to read this message."
 
 function corsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '*'

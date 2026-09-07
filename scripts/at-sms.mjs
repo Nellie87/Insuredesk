@@ -3,7 +3,7 @@ const LIVE_HOST = 'https://api.africastalking.com'
 const MAX_MESSAGE_LENGTH = 1000
 
 export const DEFAULT_TEST_MESSAGE =
-  "InsureAgent sandbox test: the SMS reminder path works. Open the Africa's Talking simulator to read this message."
+  "wakalapro sandbox test: the SMS reminder path works. Open the Africa's Talking simulator to read this message."
 
 export function normalizeMsisdn(raw) {
   const compact = String(raw || '').trim().replace(/[\s\-().]/g, '')

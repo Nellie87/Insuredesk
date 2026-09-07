@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { format, parseISO, startOfMonth, isSameMonth } from 'date-fns'
 import { useReminders } from '../hooks/useReminders'
 import { useAppStore } from '../store/appStore'
 import { toast } from '../store/toastStore'
 import {
-  buildReminderMessage,
-  paymentReminderTriggerForDueDate,
+  getItemPhone,
+  getOutreachMessage,
+  getWhatsAppLink,
   toSmsMessage,
-  whatsappUrl,
 } from '../utils/reminders'
 import { sendSms } from '../lib/sms'
 import {
@@ -30,42 +31,6 @@ const FILTERS = [
   { value: 'follow_up', label: 'Follow-ups' },
   { value: 'reminder', label: 'Scheduled' },
 ]
-
-function getReminderMessage(event, agent) {
-  if (!agent) return null
-
-  let message = event.reminder?.message
-
-  if (!message && event.client && event.vehicle) {
-    const trigger =
-      event.trigger ||
-      (event.type === 'renewal'
-        ? 'policy_expiry_30d'
-        : paymentReminderTriggerForDueDate(event.installment?.due_date))
-
-    message = buildReminderMessage({
-      trigger,
-      client: event.client,
-      vehicle: event.vehicle,
-      installment: event.installment,
-      outstanding: event.outstanding,
-      agent,
-    })
-  }
-
-  if (!message && event.prospect) {
-    message = `Hello ${event.prospect.full_name.split(' ')[0]}, this is ${agent.name}. Following up on your insurance enquiry. Please call or WhatsApp me on ${agent.phone}.`
-  }
-
-  return message || null
-}
-
-function getWhatsAppLink(event, agent) {
-  const phone = event.client?.phone ?? event.prospect?.phone
-  const message = getReminderMessage(event, agent)
-  if (!phone || !message) return null
-  return whatsappUrl(phone, message)
-}
 
 export default function RemindersPage() {
   const { agent } = useAppStore()
@@ -123,8 +88,8 @@ export default function RemindersPage() {
   }
 
   const handleSendSms = async event => {
-    const phone = event.client?.phone ?? event.prospect?.phone
-    const message = getReminderMessage(event, agent)
+    const phone = getItemPhone(event)
+    const message = getOutreachMessage(event, agent)
     if (!phone || !message) {
       toast('This item has no phone number or message.', 'error')
       return
@@ -154,13 +119,21 @@ export default function RemindersPage() {
       <PageHeader
         description="Payments, renewals, and follow-ups at a glance."
         actions={
-          <button
-            type="button"
-            onClick={handleToday}
-            className="rounded-xl border border-primary-100 bg-primary-50 px-3.5 py-2.5 text-sm font-semibold text-primary-700 transition hover:bg-primary-100"
-          >
-            Today
-          </button>
+          <div className="flex gap-2">
+            <Link
+              to="/today"
+              className="rounded-xl border border-primary-100 bg-primary-50 px-3.5 py-2.5 text-sm font-semibold text-primary-700 transition hover:bg-primary-100"
+            >
+              Needs attention
+            </Link>
+            <button
+              type="button"
+              onClick={handleToday}
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Jump to today
+            </button>
+          </div>
         }
       />
 

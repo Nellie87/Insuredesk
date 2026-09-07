@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { signIn, signUp } from '../lib/supabase'
 import { useAppStore } from '../store/appStore'
 import { INPUT, LABEL, BTN_PRIMARY, REQUIRED_MARK } from '../constants/formStyles'
+import BrandMark from '../components/icons/BrandMark'
 
 export default function LoginPage() {
   const { session, authLoading } = useAppStore()
@@ -82,12 +83,10 @@ export default function LoginPage() {
       <div className="relative w-full max-w-lg overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/95 shadow-panel backdrop-blur-sm">
         <div className="border-b border-stone-100 px-6 pb-5 pt-7 sm:px-8">
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-step-active text-sm font-semibold text-white shadow-soft">
-              IA
-            </div>
+            <BrandMark className="h-10 w-10" />
             <div>
               <div className="font-display text-lg text-ink">
-                InsureAgent
+                wakalapro
               </div>
               <div className="text-2xs font-medium text-ink-faint">
                 Agent workspace

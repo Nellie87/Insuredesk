@@ -1,4 +1,4 @@
--- ─── InsureAgent mock / seed data ─────────────────────────────────────────────
+-- ─── wakalapro mock / seed data ───────────────────────────────────────────────
 --
 -- HOW TO USE
 -- 1. Run schema.sql first (if you have not already).

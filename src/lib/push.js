@@ -112,7 +112,7 @@ export async function enablePushNotifications(agentId) {
   }
   if (isIosDevice() && !isStandalonePwa()) {
     throw new Error(
-      'On iPhone, add InsureAgent to your Home Screen first, then open it from there and try again.',
+      'On iPhone, add wakalapro to your Home Screen first, then open it from there and try again.',
     )
   }
 

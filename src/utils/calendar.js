@@ -87,11 +87,11 @@ export function eventToGoogleCalendar(event) {
 /**
  * Download a .ics file - import into Google Calendar via Settings → Import.
  */
-export function downloadIcsFile(events, filename = 'insureagent-calendar.ics') {
+export function downloadIcsFile(events, filename = 'wakalapro-calendar.ics') {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//InsureAgent//Calendar//EN',
+    'PRODID:-//wakalapro//Calendar//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
   ]
@@ -104,7 +104,7 @@ export function downloadIcsFile(events, filename = 'insureagent-calendar.ics') {
 
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${event.id}@insureagent.app`,
+      `UID:${event.id}@wakalapro.app`,
       `DTSTAMP:${formatIcsDate(new Date().toISOString().slice(0, 10))}T000000Z`,
       `DTSTART;VALUE=DATE:${start}`,
       `DTEND;VALUE=DATE:${end}`,

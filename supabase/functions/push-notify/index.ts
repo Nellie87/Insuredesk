@@ -29,7 +29,7 @@ function adminClient() {
 function vapidConfig() {
   const vapidPublicKey = env('VAPID_PUBLIC_KEY')
   const vapidPrivateKey = env('VAPID_PRIVATE_KEY')
-  const vapidSubject = env('VAPID_SUBJECT', 'mailto:hello@insureagent.app')
+  const vapidSubject = env('VAPID_SUBJECT', 'mailto:hello@wakalapro.app')
   if (!vapidPublicKey || !vapidPrivateKey) {
     throw new Error('VAPID keys are not configured.')
   }
@@ -90,10 +90,10 @@ async function handleTest(req) {
   const result = await sendToSubscriptions(
     subscriptions,
     {
-      title: 'InsureAgent test alert',
+      title: 'wakalapro test alert',
       body: 'Push notifications are working. You will get due-date reminders on this phone.',
-      tag: 'insureagent-test',
-      url: '/reminders',
+      tag: 'wakalapro-test',
+      url: '/today',
     },
     vapidConfig(),
   )
@@ -193,15 +193,47 @@ async function handleCron() {
 
     if (!items.length) continue
 
-    const payload = buildPushPayload(items)
-    const result = await sendToSubscriptions(subsByAgent.get(agentId) ?? [], payload, vapid)
-    staleEndpoints.push(...result.staleEndpoints)
+    const todayItems = items.filter(item => item.attention === 'today')
+    const upcomingItems = items.filter(item => item.attention !== 'today')
+    const batches = []
 
-    if (result.sent > 0) {
+    if (todayItems.length) {
+      batches.push({
+        items: todayItems,
+        payload: buildPushPayload(todayItems, {
+          url: '/today',
+          digestTitle: `${todayItems.length} thing${todayItems.length === 1 ? '' : 's'} need you today`,
+        }),
+      })
+    }
+    if (upcomingItems.length) {
+      batches.push({
+        items: upcomingItems,
+        payload: buildPushPayload(upcomingItems, { url: '/reminders' }),
+      })
+    }
+
+    let agentSent = false
+    const marked = []
+
+    for (const batch of batches) {
+      const result = await sendToSubscriptions(
+        subsByAgent.get(agentId) ?? [],
+        batch.payload,
+        vapid,
+      )
+      staleEndpoints.push(...result.staleEndpoints)
+      if (result.sent > 0) {
+        agentSent = true
+        notificationsSent += result.sent
+        marked.push(...batch.items)
+      }
+    }
+
+    if (agentSent) {
       agentsNotified += 1
-      notificationsSent += result.sent
       await supabase.from('push_sends').upsert(
-        items.map(item => ({
+        marked.map(item => ({
           agent_id: agentId,
           event_key: item.key,
         })),

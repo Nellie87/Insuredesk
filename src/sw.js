@@ -55,14 +55,14 @@ self.addEventListener('push', event => {
     data = { body: event.data?.text() || '' }
   }
 
-  const title = data.title || 'InsureAgent'
+  const title = data.title || 'wakalapro'
   const options = {
     body: data.body || 'You have a new reminder.',
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
-    tag: data.tag || 'insureagent-reminder',
+    tag: data.tag || 'wakalapro-reminder',
     renotify: true,
-    data: { url: data.url || '/reminders' },
+    data: { url: data.url || '/today' },
   }
 
   event.waitUntil(self.registration.showNotification(title, options))
@@ -70,7 +70,7 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close()
-  const path = event.notification.data?.url || '/reminders'
+  const path = event.notification.data?.url || '/today'
 
   event.waitUntil(
     (async () => {

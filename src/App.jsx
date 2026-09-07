@@ -12,6 +12,7 @@ import ImportClientsPage from './pages/ImportClientsPage'
 import CalculatorPage  from './pages/CalculatorPage'
 import PaymentsPage    from './pages/PaymentsPage'
 import RemindersPage   from './pages/RemindersPage'
+import TodayPage       from './pages/TodayPage'
 import CommissionsPage from './pages/CommissionsPage'
 import SettingsPage    from './pages/SettingsPage'
 import ProspectsPage from './pages/ProspectsPage'
@@ -20,6 +21,7 @@ import AddVehiclePage from './pages/AddVehiclePage'
 
 // Layout
 import AppLayout from './components/layout/AppLayout'
+import BrandMark from './components/icons/BrandMark'
 import Toaster from './components/ui/Toaster'
 
 function ProtectedRoute({ children }) {
@@ -33,11 +35,9 @@ function SplashScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas bg-login-atmosphere">
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-step-active text-sm font-semibold text-white shadow-soft">
-          IA
-        </div>
+        <BrandMark className="mx-auto mb-4 h-12 w-12" title="wakalapro" />
         <div className="mb-1 font-display text-2xl text-ink">
-          InsureAgent
+          wakalapro
         </div>
         <div className="text-sm font-medium text-ink-muted">Loading...</div>
       </div>
@@ -68,6 +68,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard"           element={<DashboardPage />} />
+          <Route path="today"               element={<TodayPage />} />
           <Route path="prospects"           element={<ProspectsPage />} />
           <Route path="clients"             element={<ClientsPage />} />
           <Route path="clients/add"         element={<AddClientPage />} />
